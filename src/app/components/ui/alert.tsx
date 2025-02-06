@@ -1,4 +1,3 @@
-// components/ui/alert.tsx
 import React from 'react';
 
 interface AlertProps {
