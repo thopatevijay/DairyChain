@@ -12,12 +12,20 @@ interface MilkData {
     quantity: number;
     quality: number;
     status: 'ACCEPTED' | 'REJECTED';
+    timestamp: string;
 }
 
 const MilkSupplyChain = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [milkInspectionData, setMilkInspectionData] = useState<MilkData | null>(null);
     const [selectedNode, setSelectedNode] = useState<string | null>(null);
+    const [inspectionHistory, setInspectionHistory] = useState<MilkData[]>([]);
+
+    // Create a handler for milk inspection that updates both current and history
+    const handleMilkInspection = (data: MilkData) => {
+        setMilkInspectionData(data);
+        setInspectionHistory(prev => [data, ...prev].slice(0, 5));
+    };
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -25,16 +33,21 @@ const MilkSupplyChain = () => {
         const engine = new BABYLON.Engine(canvasRef.current, true);
         const scene = new BABYLON.Scene(engine);
 
-        // Camera setup with two positions
+        // Camera setup
         const camera = new BABYLON.ArcRotateCamera(
             "camera",
             0,
             Math.PI / 3,
-            60, // Increased distance for better overview
+            60,
             BABYLON.Vector3.Zero(),
             scene
         );
         camera.attachControl(canvasRef.current, true);
+        
+        camera.panningAxis = new BABYLON.Vector3(1, 0, 1); // Allow panning in X and Z
+        camera.panningInertia = 0.8; // Increase panning speed
+        camera.panningDistanceLimit = 100; // Allow panning over larger distances
+        
         camera.lowerRadiusLimit = 15;
         camera.upperRadiusLimit = 100;
 
@@ -67,13 +80,13 @@ const MilkSupplyChain = () => {
         const farms = Array.from({ length: 3 }, (_, i) =>
             FarmNode({
                 scene,
-                position: new BABYLON.Vector3(-30, 0, -8 + (i * 8)), // Reduced spacing
+                position: new BABYLON.Vector3(-30, 0, -8 + (i * 8)),
                 index: i,
-                onInspection: setMilkInspectionData,
+                onInspection: handleMilkInspection,
                 onSelect: (nodeName) => {
                     setSelectedNode(nodeName);
-                    camera.setTarget(new BABYLON.Vector3(-30, 0, -8 + (i * 8)));
-                    camera.radius = 20;
+                    camera.setTarget(new BABYLON.Vector3(-22, 0, -8 + (i * 8)));
+                    camera.radius = 30;
                 }
             })
         );
@@ -81,7 +94,7 @@ const MilkSupplyChain = () => {
         const collectionPoint = CollectionPoint({
             scene,
             position: new BABYLON.Vector3(-15, 0, 0), // Reduced spacing
-            onInspection: setMilkInspectionData,
+            onInspection: handleMilkInspection,
             onSelect: (nodeName) => {
                 setSelectedNode(nodeName);
                 camera.setTarget(new BABYLON.Vector3(-15, 0, 0));
@@ -99,7 +112,7 @@ const MilkSupplyChain = () => {
             building.position = position;
             building.material = blueMaterial;
             createLabel("Processing Plant", position, scene);
-            createRobot(new BABYLON.Vector3(position.x - 4, position.y, position.z), scene, setMilkInspectionData);
+            createRobot(new BABYLON.Vector3(position.x - 4, position.y, position.z), scene, handleMilkInspection);
             return building;
         };
 
@@ -114,7 +127,7 @@ const MilkSupplyChain = () => {
         distributor.position = new BABYLON.Vector3(15, 0, 0);
         distributor.material = blueMaterial;
         createLabel("Distributor", distributor.position, scene);
-        createRobot(new BABYLON.Vector3(17, 0, 0), scene, setMilkInspectionData);
+        createRobot(new BABYLON.Vector3(17, 0, 0), scene, handleMilkInspection);
 
         // Single retailer with robot
         const retailer = BABYLON.MeshBuilder.CreateBox(
@@ -125,7 +138,7 @@ const MilkSupplyChain = () => {
         retailer.position = new BABYLON.Vector3(30, 0, 0);
         retailer.material = iotActiveMaterial;
         createLabel("Retailer", retailer.position, scene);
-        createRobot(new BABYLON.Vector3(32, 0, 0), scene, setMilkInspectionData);
+        createRobot(new BABYLON.Vector3(32, 0, 0), scene, handleMilkInspection);
 
         // Single customer with robot
         const customer = BABYLON.MeshBuilder.CreateSphere(
@@ -136,7 +149,7 @@ const MilkSupplyChain = () => {
         customer.position = new BABYLON.Vector3(45, 0, 0);
         customer.material = blueMaterial;
         createLabel("Customer", customer.position, scene);
-        createRobot(new BABYLON.Vector3(47, 0, 0), scene, setMilkInspectionData);
+        createRobot(new BABYLON.Vector3(47, 0, 0), scene, handleMilkInspection);
 
         // Create IoT connections
         farms.forEach(farm => {
@@ -208,11 +221,12 @@ const MilkSupplyChain = () => {
                 ref={canvasRef}
                 style={{ width: '100%', height: '100%' }}
             />
+            {/* Current Inspection Alert */}
             {milkInspectionData && (
                 <div className="absolute top-4 right-4 w-80">
                     <Alert variant={milkInspectionData.status === 'ACCEPTED' ? 'success' : 'error'}>
                         <AlertTitle>
-                            {selectedNode ? `${selectedNode} - Inspection Result` : 'Milk Inspection Result'}
+                            New Milk Inspection - {milkInspectionData.timestamp}
                         </AlertTitle>
                         <AlertDescription>
                             <div className="space-y-2">
@@ -225,6 +239,23 @@ const MilkSupplyChain = () => {
                     </Alert>
                 </div>
             )}
+            {/* Inspection History */}
+            <div className="absolute bottom-4 right-4 w-80 space-y-2">
+                {inspectionHistory.map((data, index) => (
+                    <Alert 
+                        key={index}
+                        variant={data.status === 'ACCEPTED' ? 'success' : 'error'}
+                    >
+                        <AlertTitle>
+                            {selectedNode && `${selectedNode} - `}
+                            Farmer {data.farmerId} - {data.timestamp}
+                        </AlertTitle>
+                        <AlertDescription>
+                            {data.quantity}L - {data.status}
+                        </AlertDescription>
+                    </Alert>
+                ))}
+            </div>
         </div>
     );
 };

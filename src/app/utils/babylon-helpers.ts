@@ -115,7 +115,8 @@ export const createRobot = (
                     farmerId: Math.floor(Math.random() * 3) + 1,
                     quantity: Math.floor(Math.random() * 30) + 10,
                     quality: Math.floor(Math.random() * 5) + 25,
-                    status: Math.random() > 0.2 ? 'ACCEPTED' : 'REJECTED'
+                    status: Math.random() > 0.2 ? 'ACCEPTED' : 'REJECTED',
+                    timestamp: new Date().toLocaleTimeString()
                 };
                 onInspection(milkData);
                 

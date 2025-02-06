@@ -3,6 +3,7 @@ export interface MilkData {
   quantity: number;
   quality: number;
   status: 'ACCEPTED' | 'REJECTED';
+  timestamp: string;
 }
 
 export interface SceneConfig {
