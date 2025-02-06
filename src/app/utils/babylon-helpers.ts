@@ -41,10 +41,11 @@ export const createLabel = (text: string, position: BABYLON.Vector3, scene: BABY
 export const createRobot = (
     position: BABYLON.Vector3,
     scene: BABYLON.Scene,
-    onInspection: (data: MilkData) => void
+    onInspection: (data: MilkData) => void,
+    color?: BABYLON.Color3
 ) => {
     const robotMaterial = new BABYLON.StandardMaterial("robotMaterial", scene);
-    robotMaterial.diffuseColor = new BABYLON.Color3(0.7, 0.7, 0.7);
+    robotMaterial.diffuseColor = color || new BABYLON.Color3(0.7, 0.7, 0.7);
     robotMaterial.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
 
     // Robot body

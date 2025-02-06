@@ -9,7 +9,19 @@ export interface MilkData {
     farmerCount?: number;
     averageQuality?: number;
     bottleCount?: number;
-    processedStatus?: string;
+    processStats?: {
+      trucksReceived: number;
+      acceptedTrucks: number;
+      rejectedTrucks: number;
+      avgQuality: number;
+      processingStartTime: string;
+      processingEndTime: string;
+      productionStartTime: string;
+      productionEndTime: string;
+      bottlesPacked: number;
+      finalQuality: number;
+      isDispatched: boolean;
+    };
   };
 }
 
