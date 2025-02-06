@@ -6,8 +6,10 @@ export interface MilkData {
   timestamp: string;
   summary?: {
     totalQuantity: number;
-    farmerCount: number;
-    averageQuality: number;
+    farmerCount?: number;
+    averageQuality?: number;
+    bottleCount?: number;
+    processedStatus?: string;
   };
 }
 

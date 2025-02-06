@@ -213,8 +213,17 @@ export const CollectionPoint = ({ scene, position, onInspection, onSelect, proce
 
         scene.beginAnimation(truck, 0, animationDuration, false, 1, () => {
             truck.setEnabled(false);
-            truck.position = startPos; // Reset to original position
-            truck.rotation.y = 0; // Reset rotation
+            truck.position = startPos;
+            truck.rotation.y = 0;
+            
+            // Trigger processing plant
+            scene.metadata = {
+                ...scene.metadata,
+                processingDelivery: {
+                    quantity: collectedMilk.totalQuantity,
+                    quality: collectedMilk.averageQuality
+                }
+            };
         });
     };
 

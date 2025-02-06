@@ -6,6 +6,7 @@ import { FarmNode } from './supply-chain/FarmNode';
 import { CollectionPoint } from './supply-chain/CollectionPoint';
 import { IoTConnection } from './supply-chain/IoTConnection';
 import { createLabel, createRobot } from '@/app/utils/babylon-helpers';
+import { ProcessingPlant } from './supply-chain/ProcessingPlant';
 
 interface MilkData {
     farmerId: number;
@@ -110,21 +111,16 @@ const MilkSupplyChain = () => {
             processingPlantPosition
         });
 
-        // Create processing plant with robot
-        const createProcessingPlant = (position: BABYLON.Vector3) => {
-            const building = BABYLON.MeshBuilder.CreateBox(
-                "plant",
-                { width: 6, height: 4, depth: 6 },
-                scene
-            );
-            building.position = position;
-            building.material = blueMaterial;
-            createLabel("Processing Plant", position, scene);
-            createRobot(new BABYLON.Vector3(position.x - 4, position.y, position.z), scene, handleMilkInspection);
-            return building;
-        };
-
-        const processingPlant = createProcessingPlant(processingPlantPosition);
+        const processingPlant = ProcessingPlant({
+            scene,
+            position: processingPlantPosition,
+            onInspection: handleMilkInspection,
+            onSelect: (nodeName) => {
+                setSelectedNode(nodeName);
+                camera.setTarget(processingPlantPosition);
+                camera.radius = 20;
+            }
+        });
 
         // Single distributor with robot
         const distributor = BABYLON.MeshBuilder.CreateBox(
