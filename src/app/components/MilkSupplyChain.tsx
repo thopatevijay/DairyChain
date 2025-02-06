@@ -25,6 +25,11 @@ const MilkSupplyChain = () => {
     const handleMilkInspection = (data: MilkData) => {
         setMilkInspectionData(data);
         setInspectionHistory(prev => [data, ...prev].slice(0, 5));
+        
+        // Clear current inspection alert after 5 seconds
+        setTimeout(() => {
+            setMilkInspectionData(null);
+        }, 5000);
     };
 
     useEffect(() => {
@@ -45,7 +50,7 @@ const MilkSupplyChain = () => {
         camera.attachControl(canvasRef.current, true);
         
         camera.panningAxis = new BABYLON.Vector3(1, 0, 1); // Allow panning in X and Z
-        camera.panningInertia = 0.8; // Increase panning speed
+        camera.panningInertia = 0.9; // Increase panning speed
         camera.panningDistanceLimit = 100; // Allow panning over larger distances
         
         camera.lowerRadiusLimit = 15;
@@ -91,15 +96,18 @@ const MilkSupplyChain = () => {
             })
         );
 
+        const processingPlantPosition = new BABYLON.Vector3(0, 0, 0);
+
         const collectionPoint = CollectionPoint({
             scene,
-            position: new BABYLON.Vector3(-15, 0, 0), // Reduced spacing
+            position: new BABYLON.Vector3(-15, 0, 0),
             onInspection: handleMilkInspection,
             onSelect: (nodeName) => {
                 setSelectedNode(nodeName);
                 camera.setTarget(new BABYLON.Vector3(-15, 0, 0));
                 camera.radius = 20;
-            }
+            },
+            processingPlantPosition
         });
 
         // Create processing plant with robot
@@ -116,7 +124,7 @@ const MilkSupplyChain = () => {
             return building;
         };
 
-        const processingPlant = createProcessingPlant(new BABYLON.Vector3(0, 0, 0));
+        const processingPlant = createProcessingPlant(processingPlantPosition);
 
         // Single distributor with robot
         const distributor = BABYLON.MeshBuilder.CreateBox(

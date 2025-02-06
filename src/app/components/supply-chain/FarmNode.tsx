@@ -10,7 +10,7 @@ interface FarmNodeProps {
     onSelect: (nodeName: string) => void;
 }
 
-export const FarmNode = ({ scene, position, index, onInspection, onSelect }: FarmNodeProps) => {
+export const FarmNode = ({ scene, position, index, onInspection }: FarmNodeProps) => {
     const blueMaterial = new BABYLON.StandardMaterial("blueMaterial", scene);
     blueMaterial.diffuseColor = new BABYLON.Color3(0.4, 0.6, 0.9);
 
@@ -23,7 +23,7 @@ export const FarmNode = ({ scene, position, index, onInspection, onSelect }: Far
     farm.material = blueMaterial;
 
     createLabel(`Farmer ${index + 1}`, position, scene);
-    createRobot(new BABYLON.Vector3(position.x - 2, position.y, position.z), scene, onInspection);
+    const robot = createRobot(new BABYLON.Vector3(position.x - 2, position.y, position.z), scene, onInspection);
 
     farm.actionManager = new BABYLON.ActionManager(scene);
 
@@ -59,7 +59,8 @@ export const FarmNode = ({ scene, position, index, onInspection, onSelect }: Far
         container.animations = [animation];
         scene.beginAnimation(container, 0, animationDuration, false, 1, () => {
             container.dispose();
-            // Trigger inspection at collection point
+            
+            // Generate milk data
             const milkData: MilkData = {
                 farmerId: index + 1,
                 quantity: Math.floor(Math.random() * 30) + 10,
@@ -67,7 +68,31 @@ export const FarmNode = ({ scene, position, index, onInspection, onSelect }: Far
                 status: Math.random() > 0.2 ? 'ACCEPTED' : 'REJECTED',
                 timestamp: new Date().toLocaleTimeString()
             };
+
+            // Trigger inspection and notify collection point
             onInspection(milkData);
+            scene.metadata = {
+                ...scene.metadata,
+                milkDelivery: milkData
+            };
+
+            // Return robot animation
+            const returnAnimation = new BABYLON.Animation(
+                "returnAnimation",
+                "position",
+                frameRate,
+                BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+                BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+            );
+
+            const returnKeys = [
+                { frame: 0, value: targetPosition },
+                { frame: animationDuration, value: new BABYLON.Vector3(position.x - 2, position.y, position.z) }
+            ];
+            returnAnimation.setKeys(returnKeys);
+
+            robot.animations = [returnAnimation];
+            scene.beginAnimation(robot, 0, animationDuration, false);
         });
     };
 
@@ -76,7 +101,7 @@ export const FarmNode = ({ scene, position, index, onInspection, onSelect }: Far
         new BABYLON.ExecuteCodeAction(
             BABYLON.ActionManager.OnPickTrigger,
             () => {
-                onSelect(`Farmer ${index + 1}`);
+                // onSelect(`Farmer ${index + 1}`);
                 deliverMilk();
             }
         )

@@ -4,6 +4,11 @@ export interface MilkData {
   quality: number;
   status: 'ACCEPTED' | 'REJECTED';
   timestamp: string;
+  summary?: {
+    totalQuantity: number;
+    farmerCount: number;
+    averageQuality: number;
+  };
 }
 
 export interface SceneConfig {
