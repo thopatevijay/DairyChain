@@ -7,6 +7,7 @@ import { CollectionPoint } from './supply-chain/CollectionPoint';
 import { IoTConnection } from './supply-chain/IoTConnection';
 import { createLabel, createRobot } from '@/app/utils/babylon-helpers';
 import { ProcessingPlant } from './supply-chain/ProcessingPlant';
+import { ProcessingStats } from './supply-chain/ProcessingPlant';
 
 interface MilkData {
     farmerId: number;
@@ -21,6 +22,7 @@ const MilkSupplyChain = () => {
     const [milkInspectionData, setMilkInspectionData] = useState<MilkData | null>(null);
     const [selectedNode, setSelectedNode] = useState<string | null>(null);
     const [inspectionHistory, setInspectionHistory] = useState<MilkData[]>([]);
+    const [processingStats, setProcessingStats] = useState<ProcessingStats | null>(null);
 
     // Create a handler for milk inspection that updates both current and history
     const handleMilkInspection = (data: MilkData) => {
@@ -119,7 +121,8 @@ const MilkSupplyChain = () => {
                 setSelectedNode(nodeName);
                 camera.setTarget(processingPlantPosition);
                 camera.radius = 20;
-            }
+            },
+            onStatusUpdate: (stats) => setProcessingStats(stats)
         });
 
         // Single distributor with robot
@@ -225,6 +228,42 @@ const MilkSupplyChain = () => {
                 ref={canvasRef}
                 style={{ width: '100%', height: '100%' }}
             />
+            {/* Processing Plant Stats Alert */}
+            {processingStats && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-96">
+                    <Alert variant={processingStats.isDispatched ? 'success' : 'info'}>
+                        <AlertTitle>Processing Plant Status</AlertTitle>
+                        <AlertDescription>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>Trucks Received:</div>
+                                <div>{processingStats.trucksReceived}</div>
+                                
+                                <div>Accepted/Rejected:</div>
+                                <div>{processingStats.acceptedTrucks}/{processingStats.rejectedTrucks}</div>
+                                
+                                <div>Total Milk:</div>
+                                <div>{processingStats.totalMilkQty.toFixed(1)}L</div>
+                                
+                                <div>Average Quality:</div>
+                                <div>{processingStats.avgQuality.toFixed(1)}</div>
+                                
+                                <div>Bottles Packed:</div>
+                                <div>{processingStats.bottlesPacked}</div>
+                                
+                                <div>Status:</div>
+                                <div>{processingStats.isDispatched ? '✓ Dispatched' : 'Processing...'}</div>
+                                
+                                {processingStats.processingStartTime && (
+                                    <>
+                                        <div>Processing Time:</div>
+                                        <div>{processingStats.processingStartTime} - {processingStats.processingEndTime}</div>
+                                    </>
+                                )}
+                            </div>
+                        </AlertDescription>
+                    </Alert>
+                </div>
+            )}
             {/* Current Inspection Alert */}
             {milkInspectionData && (
                 <div className="absolute top-4 right-4 w-80">

@@ -2,14 +2,7 @@ import * as BABYLON from '@babylonjs/core';
 import { createLabel, createRobot } from '@/app/utils/babylon-helpers';
 import { MilkData } from '@/app/types/supply-chain';
 
-interface ProcessingPlantProps {
-    scene: BABYLON.Scene;
-    position: BABYLON.Vector3;
-    onInspection: (data: MilkData) => void;
-    onSelect: (nodeName: string) => void;
-}
-
-interface ProcessingStats {
+export interface ProcessingStats {
     trucksReceived: number;
     acceptedTrucks: number;
     rejectedTrucks: number;
@@ -24,7 +17,15 @@ interface ProcessingStats {
     isDispatched: boolean;
 }
 
-export const ProcessingPlant = ({ scene, position, onInspection, onSelect }: ProcessingPlantProps) => {
+interface ProcessingPlantProps {
+    scene: BABYLON.Scene;
+    position: BABYLON.Vector3;
+    onInspection: (data: MilkData) => void;
+    onSelect: (nodeName: string) => void;
+    onStatusUpdate?: (stats: ProcessingStats) => void;
+}
+
+export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onStatusUpdate }: ProcessingPlantProps) => {
     // Stats tracking
     const statsRef = {
         current: {
@@ -156,7 +157,7 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect }: Pro
 
     createPipe(-4, 4);
 
-    // Position robots along the front with distinct colors
+    // Position robots along the front with distinct colors and improved labels
     const inspectionRobot = createRobot(
         new BABYLON.Vector3(position.x - 5, position.y, position.z - 3),
         scene,
@@ -164,8 +165,8 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect }: Pro
         new BABYLON.Color3(0.2, 0.6, 1)  // Blue
     );
     createLabel("Milk Inspector", 
-        new BABYLON.Vector3(position.x - 5, position.y - 1, position.z - 3),
-        scene
+        new BABYLON.Vector3(position.x - 5, position.y - 3.7, position.z - 3),  // Lowered position
+        scene,
     );
     
     const processingRobot = createRobot(
@@ -175,8 +176,8 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect }: Pro
         new BABYLON.Color3(0.2, 0.8, 0.2)  // Green
     );
     createLabel("Milk Processor", 
-        new BABYLON.Vector3(position.x - 2, position.y - 1, position.z - 3),
-        scene
+        new BABYLON.Vector3(position.x - 2, position.y - 3.7, position.z - 3),  // Lowered position
+        scene,
     );
     
     const productionRobot = createRobot(
@@ -186,8 +187,8 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect }: Pro
         new BABYLON.Color3(0.8, 0.4, 0.1)  // Orange
     );
     createLabel("Production Manager", 
-        new BABYLON.Vector3(position.x + 2, position.y - 1, position.z - 3),
-        scene
+        new BABYLON.Vector3(position.x + 2, position.y - 3.7, position.z - 3),  // Lowered position
+        scene,
     );
     
     const dispatchRobot = createRobot(
@@ -197,8 +198,8 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect }: Pro
         new BABYLON.Color3(0.8, 0.2, 0.2)  // Red
     );
     createLabel("Production Dispatcher", 
-        new BABYLON.Vector3(position.x + 5, position.y - 1, position.z - 3),
-        scene
+        new BABYLON.Vector3(position.x + 5, position.y - 3.7, position.z - 3),  // Lowered position
+        scene,
     );
 
     // Add conveyor belt in front (adjusted z position)
@@ -214,8 +215,9 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect }: Pro
     );
     conveyor.material = metalMaterial;
 
-    // Replace notice board with alert system
+    // Update showNotice function
     const showNotice = (stats: ProcessingStats) => {
+        // Just call the callbacks to update UI
         onInspection({
             farmerId: -1,
             quantity: stats.totalMilkQty,
@@ -224,21 +226,14 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect }: Pro
             timestamp: new Date().toLocaleTimeString(),
             summary: {
                 totalQuantity: stats.totalMilkQty,
-                processStats: {
-                    trucksReceived: stats.trucksReceived,
-                    acceptedTrucks: stats.acceptedTrucks,
-                    rejectedTrucks: stats.rejectedTrucks,
-                    avgQuality: stats.avgQuality,
-                    processingStartTime: stats.processingStartTime,
-                    processingEndTime: stats.processingEndTime,
-                    productionStartTime: stats.productionStartTime,
-                    productionEndTime: stats.productionEndTime,
-                    bottlesPacked: stats.bottlesPacked,
-                    finalQuality: stats.finalQuality,
-                    isDispatched: stats.isDispatched
-                }
+                processStats: stats
             }
         });
+
+        // Update status in parent component
+        if (onStatusUpdate) {
+            onStatusUpdate(stats);
+        }
     };
 
     // Update process milk function to use alerts instead of notice board
