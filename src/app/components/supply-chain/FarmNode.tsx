@@ -21,7 +21,7 @@ export const FarmNode = ({ scene, position, index, onInspection }: FarmNodeProps
     farm.position = position;
     farm.material = blueMaterial;
 
-    createLabel(`Farmer ${index + 1}`, position);
+    createLabel(`Farmer ${index + 1}`, position, scene);
     createRobot(new BABYLON.Vector3(position.x - 2, position.y, position.z), scene, onInspection);
 
     return farm;
