@@ -1,11 +1,5 @@
 'use client';
-import dynamic from 'next/dynamic';
 import MilkSupplyChain from './components/MilkSupplyChain';
-// Dynamically import the component with SSR disabled
-const DairySupplyChain = dynamic(
-  () => import('./components/DairySupplyChain'),
-  { ssr: false }
-);
 
 export default function Home() {
   return (
