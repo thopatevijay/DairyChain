@@ -20,7 +20,7 @@ export const CollectionPoint = ({ scene, position, onInspection }: CollectionPoi
     tank.position = position;
     tank.material = iotActiveMaterial;
 
-    createLabel("Collection Point", position);
+    createLabel("Collection Point", position, scene);
     createRobot(new BABYLON.Vector3(position.x - 2, position.y, position.z), scene, onInspection);
 
     return tank;
