@@ -1,6 +1,6 @@
 'use client';
 import dynamic from 'next/dynamic';
-
+import MilkSupplyChain from './components/MilkSupplyChain';
 // Dynamically import the component with SSR disabled
 const DairySupplyChain = dynamic(
   () => import('./components/DairySupplyChain'),
@@ -10,7 +10,8 @@ const DairySupplyChain = dynamic(
 export default function Home() {
   return (
     <main className="flex justify-center items-center w-screen h-screen bg-gray-900">
-      <DairySupplyChain />
+      {/* <DairySupplyChain /> */}
+      <MilkSupplyChain />
     </main>
   );
 }

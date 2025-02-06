@@ -132,54 +132,100 @@ const DairySupplyChain: FC = () => {
             return plane;
         };
 
-        // Create facilities
+        // Helper function to find nearest point
+        const findNearestPoint = (from: Vector3, points: Vector3[]) => {
+            return points.reduce((nearest, current) => 
+                Vector3.Distance(from, current) < Vector3.Distance(from, nearest) ? current : nearest
+            );
+        };
+
+        // Update facilities array to match diagram
         const facilities = [
             {
-                name: "farms",
-                label: "Farms",
-                position: new Vector3(-40, 2, 0),
+                name: "farmers",
+                label: "Farmers",
+                positions: [
+                    new Vector3(-40, 2, -15),
+                    new Vector3(-40, 2, -5),
+                    new Vector3(-40, 2, 5),
+                    new Vector3(-40, 2, 15)
+                ],
                 color: new Color3(0.2, 0.6, 0.2),
                 create: undefined
             },
             {
-                name: "milkPooling",
-                label: "Collection Center",
-                position: new Vector3(-20, 2, 0),
+                name: "milkPoolingPoints",
+                label: "Milk Pooling Points",
+                positions: [
+                    new Vector3(-25, 2, -10),
+                    new Vector3(-25, 2, 10)
+                ],
+                color: new Color3(0.4, 0.4, 0.6),
+                create: undefined
+            },
+            {
+                name: "collectionCenter",
+                label: "Bulk Collection Center",
+                position: new Vector3(-10, 2, 0),
                 create: (scene: Scene, position: Vector3) => createMilkCollectionCenter(scene, position)
             },
             {
                 name: "processingPlant",
                 label: "Processing Plant",
-                position: new Vector3(0, 2, 0),
+                position: new Vector3(10, 2, 0),
                 create: (scene: Scene, position: Vector3) => createProcessingPlant(scene, position)
             },
             {
                 name: "distributors",
                 label: "Distributors",
-                position: new Vector3(20, 2, 0),
+                positions: [
+                    new Vector3(25, 2, -10),
+                    new Vector3(25, 2, 10)
+                ],
                 color: new Color3(0.6, 0.2, 0.6),
                 create: undefined
             },
             {
                 name: "retailers",
                 label: "Retailers",
-                position: new Vector3(40, 2, 0),
+                positions: [
+                    new Vector3(40, 2, -15),
+                    new Vector3(40, 2, -5),
+                    new Vector3(40, 2, 5),
+                    new Vector3(40, 2, 15)
+                ],
                 color: new Color3(0.6, 0.6, 0.2),
                 create: undefined
             }
         ];
 
+        // Create connection lines between facilities
+        const createConnectionLine = (start: Vector3, end: Vector3) => {
+            const points = [start, end];
+            const lines = MeshBuilder.CreateLines("lines", { points }, scene);
+            lines.color = new Color3(0.3, 0.3, 0.8);
+            return lines;
+        };
+
+        // Create facilities and connections
         facilities.forEach(facility => {
-            if (facility.create) {
+            if (facility.positions) {
+                // Create multiple instances for distributed facilities
+                facility.positions.forEach(pos => {
+                    const box = createFacility(pos, facility.color!, facility.name);
+                    createLabel(scene, facility.label, pos);
+                    
+                    // Connect to next stage
+                    if (facility.name === "farmers") {
+                        const nearestPoolingPoint = findNearestPoint(pos, facilities.find(f => f.name === "milkPoolingPoints")!.positions!);
+                        createConnectionLine(pos, nearestPoolingPoint);
+                    }
+                    // Add other connections similarly
+                });
+            } else if (facility.create) {
                 facility.create(scene, facility.position);
-            } else {
-                createFacility(
-                    facility.position,
-                    facility.color!,
-                    facility.name
-                );
+                createLabel(scene, facility.label, facility.position);
             }
-            createLabel(scene, facility.label, facility.position);
         });
 
         // Start render loop
