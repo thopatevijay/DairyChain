@@ -11,12 +11,14 @@ import {
     Color3,
     Engine,
     PointLight,
-    Mesh
+    Mesh,
+    DynamicTexture
 } from '@babylonjs/core';
 import '@babylonjs/core/Materials/standardMaterial';
 import '@babylonjs/core/Materials/Textures/Loaders/envTextureLoader';
 import { GridMaterial } from '@babylonjs/materials/grid';
 import { createProcessingPlant } from './facilities/ProcessingPlant';
+import { createMilkCollectionCenter } from './facilities/MilkCollectionCenter';
 
 const DairySupplyChain: FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -104,50 +106,80 @@ const DairySupplyChain: FC = () => {
             return box;
         };
 
+        // Create labels
+        const createLabel = (scene: Scene, text: string, position: Vector3) => {
+            // Create a plane for the label
+            const plane = MeshBuilder.CreatePlane("label", { width: 8, height: 2 }, scene);
+            plane.position = new Vector3(position.x, position.y + 5, position.z);
+            plane.billboardMode = Mesh.BILLBOARDMODE_ALL;
+
+            // Create dynamic texture for text
+            const texture = new DynamicTexture("labelTexture", { width: 512, height: 128 }, scene, true);
+            const context = texture.getContext();
+            context.fillStyle = 'white';
+            context.fillRect(0, 0, 512, 128);
+            
+            texture.drawText(text, null, 80, "bold 72px Arial", "black", "transparent", true);
+
+            // Create material with texture
+            const material = new StandardMaterial("labelMaterial", scene);
+            material.diffuseTexture = texture;
+            material.specularColor = new Color3(0, 0, 0);
+            material.emissiveColor = new Color3(1, 1, 1);
+            material.backFaceCulling = false;
+            plane.material = material;
+
+            return plane;
+        };
+
         // Create facilities
         const facilities = [
             {
                 name: "farms",
-                position: new Vector3(-30, 2, 0),
-                color: new Color3(0.2, 0.6, 0.2), // Green
-                create: (scene: Scene, position: Vector3) => createFacility(position, new Color3(0.2, 0.6, 0.2), "farms")
+                label: "Farms",
+                position: new Vector3(-40, 2, 0),
+                color: new Color3(0.2, 0.6, 0.2),
+                create: undefined
             },
             {
                 name: "milkPooling",
-                position: new Vector3(-15, 2, 0),
-                color: new Color3(0.6, 0.4, 0.2), // Brown
-                create: (scene: Scene, position: Vector3) => createFacility(position, new Color3(0.6, 0.4, 0.2), "milkPooling")
+                label: "Collection Center",
+                position: new Vector3(-20, 2, 0),
+                create: (scene: Scene, position: Vector3) => createMilkCollectionCenter(scene, position)
             },
             {
                 name: "processingPlant",
+                label: "Processing Plant",
                 position: new Vector3(0, 2, 0),
-                color: new Color3(0.2, 0.4, 0.6), // Blue
                 create: (scene: Scene, position: Vector3) => createProcessingPlant(scene, position)
             },
             {
                 name: "distributors",
-                position: new Vector3(15, 2, 0),
-                color: new Color3(0.6, 0.2, 0.6), // Purple
-                create: (scene: Scene, position: Vector3) => createFacility(position, new Color3(0.6, 0.2, 0.6), "distributors")
+                label: "Distributors",
+                position: new Vector3(20, 2, 0),
+                color: new Color3(0.6, 0.2, 0.6),
+                create: undefined
             },
             {
                 name: "retailers",
-                position: new Vector3(30, 2, 0),
-                color: new Color3(0.6, 0.6, 0.2), // Yellow
-                create: (scene: Scene, position: Vector3) => createFacility(position, new Color3(0.6, 0.6, 0.2), "retailers")
+                label: "Retailers",
+                position: new Vector3(40, 2, 0),
+                color: new Color3(0.6, 0.6, 0.2),
+                create: undefined
             }
         ];
 
         facilities.forEach(facility => {
-            if (facility.name === "processingPlant") {
+            if (facility.create) {
                 facility.create(scene, facility.position);
             } else {
                 createFacility(
                     facility.position,
-                    facility.color,
+                    facility.color!,
                     facility.name
                 );
             }
+            createLabel(scene, facility.label, facility.position);
         });
 
         // Start render loop
