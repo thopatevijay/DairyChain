@@ -45,63 +45,64 @@ export const createRobot = (
 ) => {
     const robotMaterial = new BABYLON.StandardMaterial("robotMaterial", scene);
     robotMaterial.diffuseColor = new BABYLON.Color3(0.7, 0.7, 0.7);
+    robotMaterial.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
 
     // Robot body
     const body = BABYLON.MeshBuilder.CreateBox(
         "robotBody",
-        { height: 1.5, width: 1, depth: 0.7 },
+        { height: 1.2, width: 0.8, depth: 0.6 },
         scene
     );
-    body.position = new BABYLON.Vector3(position.x, position.y + 0.75, position.z);
+    body.position = position.add(new BABYLON.Vector3(0, 0.6, 0));
     body.material = robotMaterial;
 
-    // Robot head
+    // Head
     const head = BABYLON.MeshBuilder.CreateSphere(
         "robotHead",
-        { diameter: 0.5 },
+        { diameter: 0.4 },
         scene
     );
-    head.position = new BABYLON.Vector3(position.x, position.y + 1.75, position.z);
+    head.position = body.position.add(new BABYLON.Vector3(0, 0.8, 0));
     head.material = robotMaterial;
 
-    // Robot eyes
-    const createEye = (offset: number) => {
+    // Arms
+    const createArm = (side: number) => {
+        const arm = BABYLON.MeshBuilder.CreateCylinder(
+            `robotArm${side}`,
+            { height: 0.8, diameter: 0.15 },
+            scene
+        );
+        arm.position = body.position.add(new BABYLON.Vector3(side * 0.5, 0, 0));
+        arm.rotation.z = side * Math.PI / 4;
+        arm.material = robotMaterial;
+        return arm;
+    };
+
+    const leftArm = createArm(-1);
+    const rightArm = createArm(1);
+
+    // Eyes
+    const createEye = (side: number) => {
         const eye = BABYLON.MeshBuilder.CreateSphere(
-            "robotEye",
+            `robotEye${side}`,
             { diameter: 0.1 },
             scene
         );
-        eye.position = new BABYLON.Vector3(
-            position.x + offset,
-            position.y + 1.8,
-            position.z + 0.2
-        );
+        eye.position = head.position.add(new BABYLON.Vector3(side * 0.15, 0, -0.15));
         const eyeMaterial = new BABYLON.StandardMaterial("eyeMaterial", scene);
         eyeMaterial.emissiveColor = new BABYLON.Color3(0, 1, 1);
         eye.material = eyeMaterial;
         return eye;
     };
 
-    createEye(-0.1);
-    createEye(0.1);
+    const leftEye = createEye(-1);
+    const rightEye = createEye(1);
 
-    // Add hover animation
-    const animation = new BABYLON.Animation(
-        "robotHover",
-        "position.y",
-        30,
-        BABYLON.Animation.ANIMATIONTYPE_FLOAT,
-        BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE
-    );
-
-    const keys = [];
-    keys.push({ frame: 0, value: position.y + 0.75 });
-    keys.push({ frame: 30, value: position.y + 1.0 });
-    keys.push({ frame: 60, value: position.y + 0.75 });
-    animation.setKeys(keys);
-
-    body.animations = [animation];
-    scene.beginAnimation(body, 0, 60, true);
+    // Create a parent mesh to group all robot parts
+    const robot = new BABYLON.Mesh("robot", scene);
+    [body, head, leftArm, rightArm, leftEye, rightEye].forEach(part => {
+        part.parent = robot;
+    });
 
     // Add interaction
     body.isPickable = true;
@@ -117,8 +118,8 @@ export const createRobot = (
                     status: Math.random() > 0.2 ? 'ACCEPTED' : 'REJECTED'
                 };
                 onInspection(milkData);
-
-                // Visual feedback animation
+                
+                // Animation
                 const pulseAnimation = new BABYLON.Animation(
                     "pulse",
                     "scaling",
@@ -126,18 +127,18 @@ export const createRobot = (
                     BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
                     BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE
                 );
-
+                
                 const pulseKeys = [];
-                pulseKeys.push({ frame: 0, value: new BABYLON.Vector3(1, 1, 1) });
-                pulseKeys.push({ frame: 15, value: new BABYLON.Vector3(1.2, 1.2, 1.2) });
-                pulseKeys.push({ frame: 30, value: new BABYLON.Vector3(1, 1, 1) });
-
+                pulseKeys.push({ frame: 0, value: robot.scaling.clone() });
+                pulseKeys.push({ frame: 15, value: robot.scaling.multiply(new BABYLON.Vector3(1.2, 1.2, 1.2)) });
+                pulseKeys.push({ frame: 30, value: robot.scaling.clone() });
+                
                 pulseAnimation.setKeys(pulseKeys);
-                body.animations = [pulseAnimation];
-                scene.beginAnimation(body, 0, 30, false);
+                robot.animations = [pulseAnimation];
+                scene.beginAnimation(robot, 0, 30, false);
             }
         )
     );
 
-    return body;
+    return robot;
 }; 

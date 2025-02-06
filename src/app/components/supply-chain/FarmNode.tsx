@@ -7,9 +7,10 @@ interface FarmNodeProps {
     position: BABYLON.Vector3;
     index: number;
     onInspection: (data: MilkData) => void;
+    onSelect: (nodeName: string) => void;
 }
 
-export const FarmNode = ({ scene, position, index, onInspection }: FarmNodeProps) => {
+export const FarmNode = ({ scene, position, index, onInspection, onSelect }: FarmNodeProps) => {
     const blueMaterial = new BABYLON.StandardMaterial("blueMaterial", scene);
     blueMaterial.diffuseColor = new BABYLON.Color3(0.4, 0.6, 0.9);
 
@@ -23,6 +24,14 @@ export const FarmNode = ({ scene, position, index, onInspection }: FarmNodeProps
 
     createLabel(`Farmer ${index + 1}`, position, scene);
     createRobot(new BABYLON.Vector3(position.x - 2, position.y, position.z), scene, onInspection);
+
+    farm.actionManager = new BABYLON.ActionManager(scene);
+    farm.actionManager.registerAction(
+        new BABYLON.ExecuteCodeAction(
+            BABYLON.ActionManager.OnPickTrigger,
+            () => onSelect(`Farmer ${index + 1}`)
+        )
+    );
 
     return farm;
 }; 

@@ -17,6 +17,7 @@ interface MilkData {
 const MilkSupplyChain = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [milkInspectionData, setMilkInspectionData] = useState<MilkData | null>(null);
+    const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -24,18 +25,18 @@ const MilkSupplyChain = () => {
         const engine = new BABYLON.Engine(canvasRef.current, true);
         const scene = new BABYLON.Scene(engine);
 
-        // Camera setup
+        // Camera setup with two positions
         const camera = new BABYLON.ArcRotateCamera(
             "camera",
             0,
             Math.PI / 3,
-            40,
+            60, // Increased distance for better overview
             BABYLON.Vector3.Zero(),
             scene
         );
         camera.attachControl(canvasRef.current, true);
         camera.lowerRadiusLimit = 15;
-        camera.upperRadiusLimit = 60;
+        camera.upperRadiusLimit = 100;
 
         // Lighting
         const light = new BABYLON.HemisphericLight(
@@ -66,16 +67,26 @@ const MilkSupplyChain = () => {
         const farms = Array.from({ length: 3 }, (_, i) =>
             FarmNode({
                 scene,
-                position: new BABYLON.Vector3(-20, 0, -6 + (i * 6)),
+                position: new BABYLON.Vector3(-30, 0, -8 + (i * 8)), // Reduced spacing
                 index: i,
-                onInspection: setMilkInspectionData
+                onInspection: setMilkInspectionData,
+                onSelect: (nodeName) => {
+                    setSelectedNode(nodeName);
+                    camera.setTarget(new BABYLON.Vector3(-30, 0, -8 + (i * 8)));
+                    camera.radius = 20;
+                }
             })
         );
 
         const collectionPoint = CollectionPoint({
             scene,
-            position: new BABYLON.Vector3(-12, 0, 0),
-            onInspection: setMilkInspectionData
+            position: new BABYLON.Vector3(-15, 0, 0), // Reduced spacing
+            onInspection: setMilkInspectionData,
+            onSelect: (nodeName) => {
+                setSelectedNode(nodeName);
+                camera.setTarget(new BABYLON.Vector3(-15, 0, 0));
+                camera.radius = 20;
+            }
         });
 
         // Create processing plant with robot
@@ -100,10 +111,10 @@ const MilkSupplyChain = () => {
             { width: 2, height: 2, depth: 2 },
             scene
         );
-        distributor.position = new BABYLON.Vector3(8, 0, 0);
+        distributor.position = new BABYLON.Vector3(15, 0, 0);
         distributor.material = blueMaterial;
         createLabel("Distributor", distributor.position, scene);
-        createRobot(new BABYLON.Vector3(10, 0, 0), scene, setMilkInspectionData);
+        createRobot(new BABYLON.Vector3(17, 0, 0), scene, setMilkInspectionData);
 
         // Single retailer with robot
         const retailer = BABYLON.MeshBuilder.CreateBox(
@@ -111,10 +122,10 @@ const MilkSupplyChain = () => {
             { width: 1.5, height: 2, depth: 1.5 },
             scene
         );
-        retailer.position = new BABYLON.Vector3(14, 0, 0);
+        retailer.position = new BABYLON.Vector3(30, 0, 0);
         retailer.material = iotActiveMaterial;
         createLabel("Retailer", retailer.position, scene);
-        createRobot(new BABYLON.Vector3(16, 0, 0), scene, setMilkInspectionData);
+        createRobot(new BABYLON.Vector3(32, 0, 0), scene, setMilkInspectionData);
 
         // Single customer with robot
         const customer = BABYLON.MeshBuilder.CreateSphere(
@@ -122,10 +133,10 @@ const MilkSupplyChain = () => {
             { diameter: 1 },
             scene
         );
-        customer.position = new BABYLON.Vector3(20, 0, 0);
+        customer.position = new BABYLON.Vector3(45, 0, 0);
         customer.material = blueMaterial;
         createLabel("Customer", customer.position, scene);
-        createRobot(new BABYLON.Vector3(22, 0, 0), scene, setMilkInspectionData);
+        createRobot(new BABYLON.Vector3(47, 0, 0), scene, setMilkInspectionData);
 
         // Create IoT connections
         farms.forEach(farm => {
@@ -160,6 +171,19 @@ const MilkSupplyChain = () => {
             end: customer.position
         });
 
+        // Add overview button
+        const overviewButton = document.createElement('button');
+        overviewButton.textContent = "Overview";
+        overviewButton.className = "absolute top-4 left-4 px-4 py-2 bg-blue-500 text-white rounded";
+        overviewButton.onclick = () => {
+            setSelectedNode(null);
+            camera.setTarget(BABYLON.Vector3.Zero());
+            camera.radius = 60;
+            camera.alpha = 0;
+            camera.beta = Math.PI / 3;
+        };
+        canvasRef.current.parentElement?.appendChild(overviewButton);
+
         // Animation loop
         engine.runRenderLoop(() => {
             scene.render();
@@ -172,6 +196,7 @@ const MilkSupplyChain = () => {
 
         // Cleanup
         return () => {
+            overviewButton.remove();
             scene.dispose();
             engine.dispose();
         };
@@ -186,7 +211,9 @@ const MilkSupplyChain = () => {
             {milkInspectionData && (
                 <div className="absolute top-4 right-4 w-80">
                     <Alert variant={milkInspectionData.status === 'ACCEPTED' ? 'success' : 'error'}>
-                        <AlertTitle>Milk Inspection Result</AlertTitle>
+                        <AlertTitle>
+                            {selectedNode ? `${selectedNode} - Inspection Result` : 'Milk Inspection Result'}
+                        </AlertTitle>
                         <AlertDescription>
                             <div className="space-y-2">
                                 <p>Farmer ID: {milkInspectionData.farmerId}</p>
