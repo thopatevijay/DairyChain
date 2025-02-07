@@ -5,9 +5,11 @@ import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 import { FarmNode } from './supply-chain/FarmNode';
 import { CollectionPoint } from './supply-chain/CollectionPoint';
 import { IoTConnection } from './supply-chain/IoTConnection';
-import { createLabel, createRobot } from '@/app/utils/babylon-helpers';
 import { ProcessingPlant } from './supply-chain/ProcessingPlant';
 import { ProcessingStats } from './supply-chain/ProcessingPlant';
+import { Distributor } from './supply-chain/Distributor';
+import { Retailer } from './supply-chain/Retailer';
+import { Customer } from './supply-chain/Customer';
 
 interface MilkData {
     farmerId: number;
@@ -28,7 +30,7 @@ const MilkSupplyChain = () => {
     const handleMilkInspection = (data: MilkData) => {
         setMilkInspectionData(data);
         setInspectionHistory(prev => [data, ...prev].slice(0, 5));
-        
+
         // Clear current inspection alert after 5 seconds
         setTimeout(() => {
             setMilkInspectionData(null);
@@ -52,11 +54,11 @@ const MilkSupplyChain = () => {
             scene
         );
         camera.attachControl(canvasRef.current, true);
-        
+
         camera.panningAxis = new BABYLON.Vector3(1, 0, 1); // Allow panning in X and Z
         camera.panningInertia = 0.9; // Increase panning speed
         camera.panningDistanceLimit = 100; // Allow panning over larger distances
-        
+
         camera.lowerRadiusLimit = 15;
         camera.upperRadiusLimit = 100;
 
@@ -127,37 +129,40 @@ const MilkSupplyChain = () => {
         });
 
         // Single distributor with robot
-        const distributor = BABYLON.MeshBuilder.CreateBox(
-            "distributor",
-            { width: 2, height: 2, depth: 2 },
-            scene
-        );
-        distributor.position = new BABYLON.Vector3(15, 0, 0);
-        distributor.material = blueMaterial;
-        createLabel("Distributor", distributor.position, scene);
-        createRobot(new BABYLON.Vector3(17, 0, 0), scene, handleMilkInspection);
+        const distributor = Distributor({
+            scene,
+            position: new BABYLON.Vector3(15, 0, 0),
+            onInspection: handleMilkInspection,
+            onSelect: (nodeName) => {
+                setSelectedNode(nodeName);
+                camera.setTarget(new BABYLON.Vector3(17, 0, 0));
+                camera.radius = 20;
+            }
+        });
 
         // Single retailer with robot
-        const retailer = BABYLON.MeshBuilder.CreateBox(
-            "retailer",
-            { width: 1.5, height: 2, depth: 1.5 },
-            scene
-        );
-        retailer.position = new BABYLON.Vector3(30, 0, 0);
-        retailer.material = iotActiveMaterial;
-        createLabel("Retailer", retailer.position, scene);
-        createRobot(new BABYLON.Vector3(32, 0, 0), scene, handleMilkInspection);
+        const retailer = Retailer({
+            scene,
+            position: new BABYLON.Vector3(30, 0, 0),
+            onInspection: handleMilkInspection,
+            onSelect: (nodeName) => {
+                setSelectedNode(nodeName);
+                camera.setTarget(new BABYLON.Vector3(32, 0, 0));
+                camera.radius = 20;
+            }
+        });
 
         // Single customer with robot
-        const customer = BABYLON.MeshBuilder.CreateSphere(
-            "customer",
-            { diameter: 1 },
-            scene
-        );
-        customer.position = new BABYLON.Vector3(45, 0, 0);
-        customer.material = blueMaterial;
-        createLabel("Customer", customer.position, scene);
-        createRobot(new BABYLON.Vector3(47, 0, 0), scene, handleMilkInspection);
+        const customer = Customer({
+            scene,
+            position: new BABYLON.Vector3(45, 0, 0),
+            onInspection: handleMilkInspection,
+            onSelect: (nodeName) => {
+                setSelectedNode(nodeName);
+                camera.setTarget(new BABYLON.Vector3(47, 0, 0));
+                camera.radius = 20;
+            }
+        });
 
         // Create IoT connections
         farms.forEach(farm => {
@@ -238,16 +243,16 @@ const MilkSupplyChain = () => {
                             <div className="grid grid-cols-2 gap-2">
                                 <div>Trucks Received:</div>
                                 <div>{processingStats.trucksReceived}</div>
-                                
+
                                 <div>Accepted/Rejected:</div>
                                 <div>{processingStats.acceptedTrucks}/{processingStats.rejectedTrucks}</div>
-                                
+
                                 <div>Total Milk:</div>
                                 <div>{processingStats.totalMilkQty.toFixed(1)}L</div>
-                                
+
                                 <div>Average Quality:</div>
                                 <div>{processingStats.avgQuality.toFixed(1)}</div>
-                                
+
                                 <div>Processing Start Time:</div>
                                 <div>{processingStats.processingStartTime}</div>
 
@@ -262,10 +267,10 @@ const MilkSupplyChain = () => {
 
                                 <div>Bottles Packed:</div>
                                 <div>{processingStats.bottlesPacked}</div>
-                                
+
                                 <div>Status:</div>
                                 <div>{processingStats.status}</div>
-                                
+
                                 {/* {processingStats.processingStartTime && (
                                     <>
                                         <div>Processing Time:</div>
@@ -298,7 +303,7 @@ const MilkSupplyChain = () => {
             {/* Inspection History */}
             <div className="absolute bottom-4 right-4 w-80 space-y-2">
                 {inspectionHistory.map((data, index) => (
-                    <Alert 
+                    <Alert
                         key={index}
                         variant={data.status === 'ACCEPTED' ? 'success' : 'error'}
                     >

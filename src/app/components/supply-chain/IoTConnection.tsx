@@ -15,9 +15,9 @@ export const IoTConnection = ({ scene, start, end }: IoTConnectionProps) => {
         updatable: true
     }, scene);
 
-    lines.material = new BABYLON.StandardMaterial("tubeMaterial", scene);
-    (lines.material as BABYLON.StandardMaterial).emissiveColor = new BABYLON.Color3(0.2, 0.8, 0.2);
-    lines.material.alpha = 0.6;
+    // lines.material = new BABYLON.StandardMaterial("tubeMaterial", scene);
+    // (lines.material as BABYLON.StandardMaterial).emissiveColor = new BABYLON.Color3(0.2, 0.8, 0.2);
+    // lines.material.alpha = 0.6;
 
     return lines;
 }; 
