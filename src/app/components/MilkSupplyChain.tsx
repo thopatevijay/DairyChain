@@ -32,6 +32,7 @@ const MilkSupplyChain = () => {
         // Clear current inspection alert after 5 seconds
         setTimeout(() => {
             setMilkInspectionData(null);
+            setInspectionHistory([]);
         }, 5000);
     };
 
@@ -230,7 +231,7 @@ const MilkSupplyChain = () => {
             />
             {/* Processing Plant Stats Alert */}
             {processingStats && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-96">
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-96">
                     <Alert variant={processingStats.isDispatched ? 'success' : 'info'}>
                         <AlertTitle>Processing Plant Status</AlertTitle>
                         <AlertDescription>
@@ -247,18 +248,30 @@ const MilkSupplyChain = () => {
                                 <div>Average Quality:</div>
                                 <div>{processingStats.avgQuality.toFixed(1)}</div>
                                 
+                                <div>Processing Start Time:</div>
+                                <div>{processingStats.processingStartTime}</div>
+
+                                <div>Processing End Time:</div>
+                                <div>{processingStats.processingEndTime}</div>
+
+                                <div>Production Start Time:</div>
+                                <div>{processingStats.productionStartTime}</div>
+
+                                <div>Production End Time:</div>
+                                <div>{processingStats.productionEndTime}</div>
+
                                 <div>Bottles Packed:</div>
                                 <div>{processingStats.bottlesPacked}</div>
                                 
                                 <div>Status:</div>
-                                <div>{processingStats.isDispatched ? '✓ Dispatched' : 'Processing...'}</div>
+                                <div>{processingStats.status}</div>
                                 
-                                {processingStats.processingStartTime && (
+                                {/* {processingStats.processingStartTime && (
                                     <>
                                         <div>Processing Time:</div>
                                         <div>{processingStats.processingStartTime} - {processingStats.processingEndTime}</div>
                                     </>
-                                )}
+                                )} */}
                             </div>
                         </AlertDescription>
                     </Alert>

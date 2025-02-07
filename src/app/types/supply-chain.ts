@@ -10,17 +10,18 @@ export interface MilkData {
     averageQuality?: number;
     bottleCount?: number;
     processStats?: {
-      trucksReceived: number;
-      acceptedTrucks: number;
-      rejectedTrucks: number;
-      avgQuality: number;
-      processingStartTime: string;
-      processingEndTime: string;
-      productionStartTime: string;
-      productionEndTime: string;
-      bottlesPacked: number;
-      finalQuality: number;
-      isDispatched: boolean;
+      trucksReceived?: number;
+      acceptedTrucks?: number;
+      rejectedTrucks?: number;
+      avgQuality?: number;
+      processingStartTime?: string;
+      processingEndTime?: string;
+      productionStartTime?: string;
+      productionEndTime?: string;
+      bottlesPacked?: number;
+      finalQuality?: number;
+      isDispatched?: boolean;
+      status?: string;
     };
   };
 }

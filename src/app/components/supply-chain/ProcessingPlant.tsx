@@ -15,6 +15,7 @@ export interface ProcessingStats {
     bottlesPacked: number;
     finalQuality: number;
     isDispatched: boolean;
+    status?: string;
 }
 
 interface ProcessingPlantProps {
@@ -40,7 +41,8 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
             productionEndTime: '',
             bottlesPacked: 0,
             finalQuality: 0,
-            isDispatched: false
+            isDispatched: false,
+            status: 'WAITING'
         } as ProcessingStats
     };
 
@@ -164,40 +166,40 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
         onInspection,
         new BABYLON.Color3(0.2, 0.6, 1)  // Blue
     );
-    createLabel("Milk Inspector", 
+    createLabel("Milk Inspector",
         new BABYLON.Vector3(position.x - 5, position.y - 3.7, position.z - 3),  // Lowered position
         scene,
     );
-    
+
     const processingRobot = createRobot(
         new BABYLON.Vector3(position.x - 2, position.y, position.z - 3),
         scene,
         onInspection,
         new BABYLON.Color3(0.2, 0.8, 0.2)  // Green
     );
-    createLabel("Milk Processor", 
+    createLabel("Milk Processor",
         new BABYLON.Vector3(position.x - 2, position.y - 3.7, position.z - 3),  // Lowered position
         scene,
     );
-    
+
     const productionRobot = createRobot(
         new BABYLON.Vector3(position.x + 2, position.y, position.z - 3),
         scene,
         onInspection,
         new BABYLON.Color3(0.8, 0.4, 0.1)  // Orange
     );
-    createLabel("Production Manager", 
+    createLabel("Production Manager",
         new BABYLON.Vector3(position.x + 2, position.y - 3.7, position.z - 3),  // Lowered position
         scene,
     );
-    
+
     const dispatchRobot = createRobot(
         new BABYLON.Vector3(position.x + 5, position.y, position.z - 3),
         scene,
         onInspection,
         new BABYLON.Color3(0.8, 0.2, 0.2)  // Red
     );
-    createLabel("Production Dispatcher", 
+    createLabel("Production Dispatcher",
         new BABYLON.Vector3(position.x + 5, position.y - 3.7, position.z - 3),  // Lowered position
         scene,
     );
@@ -236,52 +238,96 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
         }
     };
 
-    // Update process milk function to use alerts instead of notice board
-    const processMilk = async (quantity: number, quality: number) => {
-        // Show notice board immediately when truck arrives
-        statsRef.current.trucksReceived++;
+    const animateRobot = async (robot: BABYLON.Mesh, animationName: string, duration: number) => {
+        const animation = new BABYLON.Animation(
+            animationName,
+            "position",
+            duration,
+            BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+            BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+        );
+
+        const keys = [];
+        keys.push({ frame: 0, value: robot.position.clone() });
+        keys.push({ frame: duration, value: new BABYLON.Vector3(
+            robot.position.x,
+            robot.position.y + 0.5,
+            robot.position.z
+        )});
+
+        animation.setKeys(keys);
+        robot.animations = [animation];
+        scene.beginAnimation(robot, 0, duration, false);
+        await new Promise(resolve => setTimeout(resolve, duration));
+    };
+    
+
+    // Add robot-specific functions
+    const inspectMilk = async (quantity: number, quality: number) => {
+        statsRef.current.status = 'INSPECTING';
         showNotice({
             ...statsRef.current,
-            totalMilkQty: quantity,
-            avgQuality: quality,
+            status: 'INSPECTING'
         });
-        
+
         // Inspection robot animation
-        scene.beginAnimation(inspectionRobot, 0, 30, false);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
+        await animateRobot(inspectionRobot, "inspectionAnimation", 3000);
+        
         // Quality check
-        const isAccepted = quality >= 25;
-        if (!isAccepted) {
-            statsRef.current.rejectedTrucks++;
-            
-            onInspection({
-                farmerId: -1,
-                quantity,
-                quality,
-                status: 'REJECTED',
-                timestamp: new Date().toLocaleTimeString()
-            });
-            return;
-        }
+        // const isAccepted = quality >= 25;
+        // if (!isAccepted) {
+        //     statsRef.current.rejectedTrucks++;
+        //     statsRef.current.status = 'REJECTED';
+        //     onInspection({
+        //         farmerId: -1,
+        //         quantity,
+        //         quality,
+        //         status: 'REJECTED',
+        //         timestamp: new Date().toLocaleTimeString()
+        //     });
+        //     return false;
+        // }
 
-        // Accept and process
         statsRef.current.acceptedTrucks++;
         statsRef.current.totalMilkQty += quantity;
-        statsRef.current.avgQuality = 
-            ((statsRef.current.avgQuality * (statsRef.current.acceptedTrucks - 1)) + quality) / 
+        statsRef.current.avgQuality =
+            ((statsRef.current.avgQuality * (statsRef.current.acceptedTrucks - 1)) + quality) /
             statsRef.current.acceptedTrucks;
+
+        // update status
+        // setTimeout(() => {
+        statsRef.current.status = 'INSPECTION_COMPLETED';
+        // }, 2000);
+        return true;
+    };
+
+    const processMilkBatch = async () => {
+        // update pressing start time
+        // setTimeout(() => {
+        statsRef.current.status = 'PROCESSING_STARTED';
         statsRef.current.processingStartTime = new Date().toLocaleTimeString();
+        showNotice({ ...statsRef.current, status: 'PROCESSING_STARTED' });
+        // }, 2000);
 
         // Processing robot animation
-        scene.beginAnimation(processingRobot, 0, 30, true);
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await animateRobot(processingRobot, "processingAnimation", 3000);
+
+        // setTimeout(()    => {
         statsRef.current.processingEndTime = new Date().toLocaleTimeString();
+        statsRef.current.status = 'PROCESSING_COMPLETED';
+        // }, 2000);
+    };
+
+    const manageProduction = async (quantity: number) => {
+        // setTimeout(() => {
+        statsRef.current.status = 'PRODUCTION_STARTED';
+        statsRef.current.productionStartTime = new Date().toLocaleTimeString();
+        showNotice({ ...statsRef.current, status: 'PRODUCTION_STARTED' });
+        // }, 2000);
 
         // Production robot animation
-        statsRef.current.productionStartTime = new Date().toLocaleTimeString();
-        scene.beginAnimation(productionRobot, 0, 30, true);
-        
+        await animateRobot(productionRobot, "productionAnimation", 3000);
+
         // Bottling process
         const bottleCount = Math.floor(quantity);
         for (let i = 0; i < bottleCount; i++) {
@@ -296,8 +342,8 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
 
             const bottleKeys = [];
             bottleKeys.push({ frame: 0, value: bottle.position.clone() });
-            bottleKeys.push({ 
-                frame: 30, 
+            bottleKeys.push({
+                frame: 30,
                 value: new BABYLON.Vector3(
                     bottle.position.x + 2,
                     bottle.position.y,
@@ -319,15 +365,44 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
             statsRef.current.bottlesPacked++;
         }
 
+        // setTimeout(() => {
         statsRef.current.productionEndTime = new Date().toLocaleTimeString();
-        statsRef.current.finalQuality = quality * 1.1; // Improved quality after processing
+        statsRef.current.status = 'PRODUCTION_COMPLETED';
+        // }, 2000);
+    };
+
+    const dispatchProducts = async () => {
+        // setTimeout(() => {
+        statsRef.current.status = 'DISPATCHING';
+        showNotice({ ...statsRef.current, status: 'DISPATCHING' });
+        // }, 2000);
 
         // Dispatch animation
-        scene.beginAnimation(dispatchRobot, 0, 30, false);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        statsRef.current.isDispatched = true;
+        await animateRobot(dispatchRobot, "dispatchAnimation", 3000);
 
-        showNotice(statsRef.current);
+        // setTimeout(() => {
+        statsRef.current.isDispatched = true;
+        statsRef.current.status = 'DISPATCHED_TO_DISTRIBUTION';
+
+        showNotice({
+            ...statsRef.current,
+            status: 'DISPATCHED_TO_DISTRIBUTION'
+        });
+        // }, 2000);
+    };
+
+    // Updated processMilk function to orchestrate the workflow
+    const processMilk = async (quantity: number, quality: number) => {
+        statsRef.current.trucksReceived++;
+
+        const isAccepted = await inspectMilk(quantity, quality);
+        if (!isAccepted) return;
+
+        // check if INSPECTION_COMPLETED then start processing
+        console.log(statsRef.current.status);
+        if (statsRef.current.status === 'INSPECTION_COMPLETED') await processMilkBatch();
+        if (statsRef.current.status === 'PROCESSING_COMPLETED') await manageProduction(quantity);
+        if (statsRef.current.status === 'PRODUCTION_COMPLETED') await dispatchProducts();
     };
 
     // Function to create bottle mesh

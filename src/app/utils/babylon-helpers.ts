@@ -112,14 +112,14 @@ export const createRobot = (
         new BABYLON.ExecuteCodeAction(
             BABYLON.ActionManager.OnPickTrigger,
             () => {
-                const milkData: MilkData = {
-                    farmerId: Math.floor(Math.random() * 3) + 1,
-                    quantity: Math.floor(Math.random() * 30) + 10,
-                    quality: Math.floor(Math.random() * 5) + 25,
-                    status: Math.random() > 0.2 ? 'ACCEPTED' : 'REJECTED',
-                    timestamp: new Date().toLocaleTimeString()
-                };
-                onInspection(milkData);
+                // const milkData: MilkData = {
+                //     farmerId: Math.floor(Math.random() * 3) + 1,
+                //     quantity: Math.floor(Math.random() * 30) + 10,
+                //     quality: Math.floor(Math.random() * 5) + 25,
+                //     status: Math.random() > 0.2 ? 'ACCEPTED' : 'REJECTED',
+                //     timestamp: new Date().toLocaleTimeString()
+                // };
+                // onInspection(milkData);
                 
                 // Animation
                 const pulseAnimation = new BABYLON.Animation(
