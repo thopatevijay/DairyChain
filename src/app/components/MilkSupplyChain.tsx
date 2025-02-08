@@ -103,6 +103,7 @@ const MilkSupplyChain = () => {
         );
 
         const processingPlantPosition = new BABYLON.Vector3(0, 0, 0);
+        const distributorPosition = new BABYLON.Vector3(15, 0, 0);
 
         const collectionPoint = CollectionPoint({
             scene,
@@ -125,19 +126,20 @@ const MilkSupplyChain = () => {
                 camera.setTarget(processingPlantPosition);
                 camera.radius = 20;
             },
-            onStatusUpdate: (stats) => setProcessingStats(stats)
+            onStatusUpdate: (stats) => setProcessingStats(stats),
+            distributorPosition
         });
 
         // Single distributor with robot
         const distributor = Distributor({
             scene,
-            position: new BABYLON.Vector3(15, 0, 0),
+            position: distributorPosition,
             onInspection: handleMilkInspection,
             onSelect: (nodeName) => {
                 setSelectedNode(nodeName);
                 camera.setTarget(new BABYLON.Vector3(17, 0, 0));
                 camera.radius = 20;
-            }
+            },
         });
 
         // Single retailer with robot

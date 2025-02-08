@@ -1,6 +1,8 @@
 import * as BABYLON from '@babylonjs/core';
 import { createLabel, createRobot } from '@/app/utils/babylon-helpers';
 import { MilkData } from '@/app/types/supply-chain';
+import { createMilkTruck } from '@/app/utils/createMilkTruck';
+import { transportMilk } from '@/app/utils/transportMilk';
 
 export interface ProcessingStats {
     trucksReceived: number;
@@ -24,9 +26,10 @@ interface ProcessingPlantProps {
     onInspection: (data: MilkData) => void;
     onSelect: (nodeName: string) => void;
     onStatusUpdate?: (stats: ProcessingStats) => void;
+    distributorPosition: BABYLON.Vector3;
 }
 
-export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onStatusUpdate }: ProcessingPlantProps) => {
+export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onStatusUpdate, distributorPosition }: ProcessingPlantProps) => {
     // Stats tracking
     const statsRef = {
         current: {
@@ -249,18 +252,22 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
 
         const keys = [];
         keys.push({ frame: 0, value: robot.position.clone() });
-        keys.push({ frame: duration, value: new BABYLON.Vector3(
-            robot.position.x,
-            robot.position.y + 0.5,
-            robot.position.z
-        )});
+        keys.push({
+            frame: duration, value: new BABYLON.Vector3(
+                robot.position.x,
+                robot.position.y + 0.5,
+                robot.position.z
+            )
+        });
 
         animation.setKeys(keys);
         robot.animations = [animation];
         scene.beginAnimation(robot, 0, duration, false);
         await new Promise(resolve => setTimeout(resolve, duration));
     };
-    
+
+    const truck = createMilkTruck(scene, position);
+    truck.setEnabled(false); // Hide truck initially
 
     // Add robot-specific functions
     const inspectMilk = async (quantity: number, quality: number) => {
@@ -272,7 +279,7 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
 
         // Inspection robot animation
         await animateRobot(inspectionRobot, "inspectionAnimation", 3000);
-        
+
         // Quality check
         // const isAccepted = quality >= 25;
         // if (!isAccepted) {
@@ -389,6 +396,21 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
             status: 'DISPATCHED_TO_DISTRIBUTION'
         });
         // }, 2000);
+
+        const distributorDelivery = {
+            distributorDelivery: {
+                quantity: statsRef.current.totalMilkQty,
+                quality: statsRef.current.avgQuality
+            }
+        };
+
+        transportMilk(
+            truck,
+            position,
+            distributorPosition,
+            scene,
+            distributorDelivery
+        );
     };
 
     // Updated processMilk function to orchestrate the workflow
