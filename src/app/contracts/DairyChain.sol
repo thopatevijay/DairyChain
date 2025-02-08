@@ -177,6 +177,17 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
     event OrderReceived(uint256 indexed batchId, address indexed retailer, uint256 retailerReceivedTimestamp);
     event RewardIssued(address indexed agent, uint256 amount, uint256 indexed batchId, string action);
 
+    // Quality threshold constants
+    uint256 public constant MAX_TEMPERATURE = 4;  // 4°C
+    uint256 public constant MIN_PH = 66;         // 6.6 (multiplied by 10 for no decimals)
+    uint256 public constant MAX_PH = 68;         // 6.8 (multiplied by 10 for no decimals)
+    uint256 public constant MIN_FAT_CONTENT = 35; // 3.5% (multiplied by 10 for no decimals)
+    uint256 public constant MIN_PROTEIN_CONTENT = 32; // 3.2% (multiplied by 10 for no decimals)
+    uint256 public constant MAX_BACTERIAL_COUNT = 100000; // 100,000 CFU/ml
+
+    // Reward amount constant
+    uint256 public constant REWARD_AMOUNT = 10;
+
     // Constructor: set contract owner, agent addresses, DairyToken instance, and initialize batch counter.
     constructor(
         address _milkCollector,
@@ -201,6 +212,7 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
 
     // Collect milk from a farmer.
     function collectMilk(uint256 farmerId, uint256 totalMilkQuantity, MilkQuality memory quality, bool isMilkAccepted) public onlyMilkCollector {
+        require(isQualityAcceptable(quality), "Milk quality parameters out of acceptable range");
         
         FarmerMilkCollection memory farmerMilkCollection = FarmerMilkCollection({
             farmerId: farmerId,
@@ -215,6 +227,7 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
 
     // Called by Milk Collector to create a new batch from collected milk.
     function createBatch(BatchCreationParams memory params) public onlyMilkCollector {
+        require(isQualityAcceptable(params.quality), "Milk quality parameters out of acceptable range");
         uint256 batchId = nextBatchId;
         _initializeBatch(batchId, params);
         
@@ -226,7 +239,7 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
             block.timestamp
         );
         
-        _issueReward(msg.sender, 10, batchId, "BatchCreated");
+        _issueReward(msg.sender, batchId, "BatchCreated");
         nextBatchId++;
     }
 
@@ -263,6 +276,7 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
     }
 
     function inspectBatch(uint256 batchId, InspectionParams memory params) public onlyMilkInspector {
+        require(isQualityAcceptable(params.quality), "Milk quality parameters out of acceptable range");
         Batch storage b = batches[batchId];
         require(b.batchId != 0, "Batch does not exist");
 
@@ -281,7 +295,7 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
             params.isBatchAccepted
         );
 
-        _issueReward(msg.sender, 10, batchId, "BatchInspected");
+        _issueReward(msg.sender, batchId, "BatchInspected");
     }
 
     // ========== Milk Processor Functions ==========
@@ -293,7 +307,7 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         b.status = BatchStatus.ProcessingStarted;
 
         emit ProcessingStarted(batchId, msg.sender, block.timestamp);
-        _issueReward(msg.sender, 10, batchId, "ProcessingStarted");
+        _issueReward(msg.sender, batchId, "ProcessingStarted");
     }
 
     function completeProcessing(
@@ -316,7 +330,7 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         b.status = BatchStatus.ProcessingCompleted;
 
         emit ProcessingCompleted(batchId, msg.sender, block.timestamp);
-       _issueReward(msg.sender, 10, batchId, "ProcessingCompleted");
+       _issueReward(msg.sender, batchId, "ProcessingCompleted");
     }
 
     // ========== Production Manager Functions ==========
@@ -338,7 +352,7 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         b.status = BatchStatus.ProductionStarted;
 
         emit ProductionStarted(batchId, msg.sender, block.timestamp);
-        _issueReward(msg.sender, 10, batchId, "ProductionStarted");
+        _issueReward(msg.sender, batchId, "ProductionStarted");
     }
 
     function completeProduction(
@@ -353,7 +367,7 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         b.status = BatchStatus.ProductionCompleted;
 
         emit ProductionCompleted(batchId, msg.sender, block.timestamp, totalBottlesProduced);
-        _issueReward(msg.sender, 10, batchId, "ProductionCompleted");
+        _issueReward(msg.sender, batchId, "ProductionCompleted");
     }
 
     // ========== Production Dispatcher Functions ==========
@@ -371,7 +385,7 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         b.status = BatchStatus.DispatchedToDistribution;
 
         emit ProductionDispatched(batchId, msg.sender, block.timestamp, bottlesReceived, bottlesDispatched);
-        _issueReward(msg.sender, 10, batchId, "ProductionDispatched");
+        _issueReward(msg.sender, batchId, "ProductionDispatched");
     }
 
     // ========== Distributor Functions ==========
@@ -389,7 +403,7 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         b.status = BatchStatus.DispatchedToRetailer;
 
         emit MilkDistributed(batchId, msg.sender, bottlesReceived ,block.timestamp, orderDispatchedToRetailerTimestamp);
-        _issueReward(msg.sender, 10, batchId, "MilkDistributed");
+        _issueReward(msg.sender, batchId, "MilkDistributed");
     }
 
     // ========== Retailer Functions ==========
@@ -405,15 +419,14 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         b.status = BatchStatus.OrderReceivedAtRetailerStore;
 
         emit OrderReceived(batchId, msg.sender, block.timestamp);
-        _issueReward(msg.sender, 10, batchId, "OrderReceived");
+        _issueReward(msg.sender, batchId, "OrderReceived");
     }
 
     // ========== Internal Reward Mechanism ==========
     // In this MVP, rewards are issued by minting DairyToken tokens.
-    function _issueReward(address agent, uint256 amount, uint256 batchId, string memory action) internal {
-        // Mint tokens to the agent's wallet.
-        _mint(agent, amount * (10**decimals()));
-        emit RewardIssued(agent, amount, batchId, action);
+    function _issueReward(address agent, uint256 batchId, string memory action) internal {
+        _mint(agent, REWARD_AMOUNT * (10**decimals()));
+        emit RewardIssued(agent, REWARD_AMOUNT, batchId, action);
     }
 
     /// @notice Get detailed information about a specific batch
@@ -429,5 +442,17 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
     /// @return uint256 The total amount of DAIRY tokens held by the address
     function getRewardBalance(address account) public view returns (uint256) {
         return balanceOf(account);
+    }
+
+    // Add a helper function to validate milk quality
+    function isQualityAcceptable(MilkQuality memory quality) public pure returns (bool) {
+        return (
+            quality.temperature <= MAX_TEMPERATURE &&
+            quality.pH >= MIN_PH &&
+            quality.pH <= MAX_PH &&
+            quality.fatContent >= MIN_FAT_CONTENT &&
+            quality.proteinContent >= MIN_PROTEIN_CONTENT &&
+            quality.bacterialCount <= MAX_BACTERIAL_COUNT
+        );
     }
 }
