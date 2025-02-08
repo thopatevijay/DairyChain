@@ -3,12 +3,35 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-/// @title DairyChain - A smart contract for tracking a dairy supply chain and rewarding agent tasks.
-/// Agents include: Milk Collector, Milk Inspector, Milk Processor, Production Manager, Production Dispatcher, Distributor, Retailer.
-/// Each agent is identified by its wallet address. This contract logs events and issues rewards (via DairyToken minting).
+/**
+ * @title DairyChain - A Dairy Supply Chain Management Smart Contract
+ * @notice IMPORTANT: This is a proof of concept contract with known limitations:
+ * - Stores significant data on-chain which can be costly in production
+ * - May have high gas costs for data retrieval and storage
+ * - Simplified reward mechanism for demonstration
+ * - Limited error handling and recovery mechanisms
+ *
+ * @dev This contract tracks dairy products from farm to retailer and rewards participants
+ * with DAIRY tokens. It inherits from OpenZeppelin's ERC20 for token functionality.
+ */
 contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
+    // ========== Constants ==========
 
-    // Role addresses for each agent (set at deployment)
+    /// @notice Quality threshold constants for milk parameters
+    /// @dev Values for pH, fat, and protein are multiplied by 10 to avoid decimals
+    uint256 public constant MAX_TEMPERATURE = 4; // 4°C
+    uint256 public constant MIN_PH = 66; // 6.6 (multiplied by 10)
+    uint256 public constant MAX_PH = 68; // 6.8 (multiplied by 10)
+    uint256 public constant MIN_FAT_CONTENT = 35; // 3.5% (multiplied by 10)
+    uint256 public constant MIN_PROTEIN_CONTENT = 32; // 3.2% (multiplied by 10)
+    uint256 public constant MAX_BACTERIAL_COUNT = 100000; // 100,000 CFU/ml
+
+    /// @notice Amount of DAIRY tokens awarded for completing tasks
+    uint256 public constant REWARD_AMOUNT = 10;
+
+    // ========== State Variables ==========
+
+    /// @notice Addresses of authorized participants in the supply chain
     address public milkCollector;
     address public milkInspector;
     address public milkProcessor;
@@ -17,64 +40,45 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
     address public distributor;
     address public retailer;
 
-    // Role-specific modifiers.
-    modifier onlyMilkCollector() {
-        require(msg.sender == milkCollector, "Not authorized: Milk Collector only");
-        _;
-    }
-    modifier onlyMilkInspector() {
-        require(msg.sender == milkInspector, "Not authorized: Milk Inspector only");
-        _;
-    }
-    modifier onlyMilkProcessor() {
-        require(msg.sender == milkProcessor, "Not authorized: Milk Processor only");
-        _;
-    }
-    modifier onlyProductionManager() {
-        require(msg.sender == productionManager, "Not authorized: Production Manager only");
-        _;
-    }
-    modifier onlyProductionDispatcher() {
-        require(msg.sender == productionDispatcher, "Not authorized: Production Dispatcher only");
-        _;
-    }
-    modifier onlyDistributor() {
-        require(msg.sender == distributor, "Not authorized: Distributor only");
-        _;
-    }
-    modifier onlyRetailer() {
-        require(msg.sender == retailer, "Not authorized: Retailer only");
-        _;
-    }
+    /// @notice Batch tracking variables
+    mapping(uint256 => Batch) public batches;
+    uint256 public nextBatchId;
+    mapping(uint256 => FarmerMilkCollection) public farmerMilkCollections;
 
-    // Enum to track the status of a milk batch.
+    // ========== Enums ==========
+
+    /// @notice Represents the current state of a milk batch in the supply chain
     enum BatchStatus {
-        BatchSentToProcessingPlant,   // Set by Milk Collector
-        BatchSentToMilkProcessor,     // Set by Milk Inspector
-        ProcessingStarted,            // Set by Milk Processor
-        ProcessingCompleted,          // Set by Milk Processor
-        ProductionStarted,            // Set by Production Manager
-        ProductionCompleted,          // Set by Production Manager
-        DispatchedToDistribution,     // Set by Production Dispatcher
-        DispatchedToRetailer,         // Set by Distributor
-        OrderReceivedAtRetailerStore  // Set by Retailer
+        BatchSentToProcessingPlant, // Set by Milk Collector
+        BatchSentToMilkProcessor, // Set by Milk Inspector
+        ProcessingStarted, // Set by Milk Processor
+        ProcessingCompleted, // Set by Milk Processor
+        ProductionStarted, // Set by Production Manager
+        ProductionCompleted, // Set by Production Manager
+        DispatchedToDistribution, // Set by Production Dispatcher
+        DispatchedToRetailer, // Set by Distributor
+        OrderReceivedAtRetailerStore // Set by Retailer
     }
 
-    // struck to collect milk from a farmer
+    // ========== Structs ==========
+
+    /// @notice Stores milk quality parameters
+    /// @dev Values for pH, fat, and protein should be multiplied by 10
+    struct MilkQuality {
+        uint256 temperature; // in Celsius
+        uint256 pH; // multiplied by 10 (e.g., 6.8 = 68)
+        uint256 fatContent; // percentage multiplied by 10
+        uint256 proteinContent; // percentage multiplied by 10
+        uint256 bacterialCount; // CFU/ml
+    }
+
+    /// @notice Records milk collection details from farmers
     struct FarmerMilkCollection {
         uint256 farmerId;
         uint256 totalMilkQuantity;
         MilkQuality quality;
-        bool isMilkAccepted;     
+        bool isMilkAccepted;
         uint256 timestamp;
-    }
-
-    struct MilkQuality {
-        uint256 temperature;    
-        uint256 pH;            
-        uint256 fatContent;    
-        uint256 proteinContent;
-        uint256 bacterialCount;
     }
 
     struct InspectionData {
@@ -118,7 +122,7 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         uint256 retailerTotalBottlesReceived;
     }
 
-   // Input parameter structs
+    // Input parameter structs
     struct BatchCreationParams {
         string truckNumber;
         uint256 totalMilkQuantity;
@@ -139,14 +143,13 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         RetailerData retail;
     }
 
- 
+    // ========== Events ==========
 
-    // Mapping from batch ID to Batch struct.
-    mapping(uint256 => Batch) public batches;
-    uint256 public nextBatchId;
-    mapping(uint256 => FarmerMilkCollection) public farmerMilkCollections;
-
-    // Events for logging actions.
+    /// @notice Emitted when milk is collected from a farmer
+    /// @param farmerId Unique identifier of the farmer
+    /// @param totalMilkQuantity Amount of milk collected in liters
+    /// @param quality Quality parameters of collected milk
+    /// @param timestamp Time of collection
     event FarmerMilkCollected(
         uint256 indexed farmerId,
         uint256 totalMilkQuantity,
@@ -168,27 +171,110 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         uint256 timestamp,
         bool isBatchAccepted
     );
-    event ProcessingStarted(uint256 indexed batchId, address indexed processor, uint256 processingStartTime);
-    event ProcessingCompleted(uint256 indexed batchId, address indexed processor, uint256 processingEndTime);
-    event ProductionStarted(uint256 indexed batchId, address indexed manager, uint256 productionStartTime);
-    event ProductionCompleted(uint256 indexed batchId, address indexed manager, uint256 productionEndTime, uint256 totalBottlesProduced);
-    event ProductionDispatched(uint256 indexed batchId, address indexed dispatcher, uint256 dispatcherTimestamp, uint256 bottlesReceived, uint256 bottlesDispatched);
-    event MilkDistributed(uint256 indexed batchId, address indexed distributor, uint256 bottlesReceived,uint256 distributorReceivedTimestamp, uint256 distributorDispatchedTimestamp);
-    event OrderReceived(uint256 indexed batchId, address indexed retailer, uint256 retailerReceivedTimestamp);
-    event RewardIssued(address indexed agent, uint256 amount, uint256 indexed batchId, string action);
+    event ProcessingStarted(
+        uint256 indexed batchId,
+        address indexed processor,
+        uint256 processingStartTime
+    );
+    event ProcessingCompleted(
+        uint256 indexed batchId,
+        address indexed processor,
+        uint256 processingEndTime
+    );
+    event ProductionStarted(
+        uint256 indexed batchId,
+        address indexed manager,
+        uint256 productionStartTime
+    );
+    event ProductionCompleted(
+        uint256 indexed batchId,
+        address indexed manager,
+        uint256 productionEndTime,
+        uint256 totalBottlesProduced
+    );
+    event ProductionDispatched(
+        uint256 indexed batchId,
+        address indexed dispatcher,
+        uint256 dispatcherTimestamp,
+        uint256 bottlesReceived,
+        uint256 bottlesDispatched
+    );
+    event MilkDistributed(
+        uint256 indexed batchId,
+        address indexed distributor,
+        uint256 bottlesReceived,
+        uint256 distributorReceivedTimestamp,
+        uint256 distributorDispatchedTimestamp
+    );
+    event OrderReceived(
+        uint256 indexed batchId,
+        address indexed retailer,
+        uint256 retailerReceivedTimestamp
+    );
+    event RewardIssued(
+        address indexed agent,
+        uint256 amount,
+        uint256 indexed batchId,
+        string action
+    );
 
-    // Quality threshold constants
-    uint256 public constant MAX_TEMPERATURE = 4;  // 4°C
-    uint256 public constant MIN_PH = 66;         // 6.6 (multiplied by 10 for no decimals)
-    uint256 public constant MAX_PH = 68;         // 6.8 (multiplied by 10 for no decimals)
-    uint256 public constant MIN_FAT_CONTENT = 35; // 3.5% (multiplied by 10 for no decimals)
-    uint256 public constant MIN_PROTEIN_CONTENT = 32; // 3.2% (multiplied by 10 for no decimals)
-    uint256 public constant MAX_BACTERIAL_COUNT = 100000; // 100,000 CFU/ml
+    // ========== Modifiers ==========
 
-    // Reward amount constant
-    uint256 public constant REWARD_AMOUNT = 10;
+    /// @notice Ensures function caller is the authorized milk collector
+    modifier onlyMilkCollector() {
+        require(
+            msg.sender == milkCollector,
+            "Not authorized: Milk Collector only"
+        );
+        _;
+    }
+    modifier onlyMilkInspector() {
+        require(
+            msg.sender == milkInspector,
+            "Not authorized: Milk Inspector only"
+        );
+        _;
+    }
+    modifier onlyMilkProcessor() {
+        require(
+            msg.sender == milkProcessor,
+            "Not authorized: Milk Processor only"
+        );
+        _;
+    }
+    modifier onlyProductionManager() {
+        require(
+            msg.sender == productionManager,
+            "Not authorized: Production Manager only"
+        );
+        _;
+    }
+    modifier onlyProductionDispatcher() {
+        require(
+            msg.sender == productionDispatcher,
+            "Not authorized: Production Dispatcher only"
+        );
+        _;
+    }
+    modifier onlyDistributor() {
+        require(msg.sender == distributor, "Not authorized: Distributor only");
+        _;
+    }
+    modifier onlyRetailer() {
+        require(msg.sender == retailer, "Not authorized: Retailer only");
+        _;
+    }
 
-    // Constructor: set contract owner, agent addresses, DairyToken instance, and initialize batch counter.
+    // ========== Constructor ==========
+
+    /// @notice Initializes the contract with authorized participants
+    /// @param _milkCollector Address of authorized milk collector
+    /// @param _milkInspector Address of authorized milk inspector
+    /// @param _milkProcessor Address of authorized milk processor
+    /// @param _productionManager Address of authorized production manager
+    /// @param _productionDispatcher Address of authorized production dispatcher
+    /// @param _distributor Address of authorized distributor
+    /// @param _retailer Address of authorized retailer
     constructor(
         address _milkCollector,
         address _milkInspector,
@@ -197,7 +283,7 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         address _productionDispatcher,
         address _distributor,
         address _retailer
-     ) {
+    ) {
         milkCollector = _milkCollector;
         milkInspector = _milkInspector;
         milkProcessor = _milkProcessor;
@@ -208,42 +294,98 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         nextBatchId = 1;
     }
 
+    // ========== Public Functions ==========
+
+    /// @notice Validates if milk quality parameters are within acceptable ranges
+    /// @param quality MilkQuality struct containing the parameters to check
+    /// @return bool True if all parameters are within acceptable ranges
+    function isQualityAcceptable(MilkQuality memory quality)
+        public
+        pure
+        returns (bool)
+    {
+        return (quality.temperature <= MAX_TEMPERATURE && // Must be ≤ 4°C
+            quality.pH >= MIN_PH && // Must be ≥ 6.6
+            quality.pH <= MAX_PH && // Must be ≤ 6.8
+            quality.fatContent >= MIN_FAT_CONTENT && // Must be ≥ 3.5%
+            quality.proteinContent >= MIN_PROTEIN_CONTENT && // Must be ≥ 3.2%
+            quality.bacterialCount <= MAX_BACTERIAL_COUNT); // Must be ≤ 100,000 CFU/ml
+    }
+
+    /// @notice Retrieves complete information about a specific batch
+    /// @param batchId The ID of the batch to query
+    /// @return Batch Complete batch information
+    function getBatchById(uint256 batchId) public view returns (Batch memory) {
+        require(batchId < nextBatchId, "Batch ID does not exist");
+        return batches[batchId];
+    }
+
+    /// @notice Gets the DAIRY token balance of an account
+    /// @param account The address to query
+    /// @return uint256 The number of DAIRY tokens owned by the account
+    function getRewardBalance(address account) public view returns (uint256) {
+        return balanceOf(account);
+    }
+
     // ========== Milk Collector Functions ==========
 
     // Collect milk from a farmer.
-    function collectMilk(uint256 farmerId, uint256 totalMilkQuantity, MilkQuality memory quality, bool isMilkAccepted) public onlyMilkCollector {
-        require(isQualityAcceptable(quality), "Milk quality parameters out of acceptable range");
-        
-        FarmerMilkCollection memory farmerMilkCollection = FarmerMilkCollection({
-            farmerId: farmerId,
-            totalMilkQuantity: totalMilkQuantity,
-            quality: quality,
-            timestamp: block.timestamp,
-            isMilkAccepted: isMilkAccepted
-        });
+    function collectMilk(
+        uint256 farmerId,
+        uint256 totalMilkQuantity,
+        MilkQuality memory quality,
+        bool isMilkAccepted
+    ) public onlyMilkCollector {
+        require(
+            isQualityAcceptable(quality),
+            "Milk quality parameters out of acceptable range"
+        );
+
+        FarmerMilkCollection
+            memory farmerMilkCollection = FarmerMilkCollection({
+                farmerId: farmerId,
+                totalMilkQuantity: totalMilkQuantity,
+                quality: quality,
+                timestamp: block.timestamp,
+                isMilkAccepted: isMilkAccepted
+            });
         farmerMilkCollections[farmerId] = farmerMilkCollection;
-        emit FarmerMilkCollected(farmerId, totalMilkQuantity, quality, block.timestamp);
+        emit FarmerMilkCollected(
+            farmerId,
+            totalMilkQuantity,
+            quality,
+            block.timestamp
+        );
     }
 
     // Called by Milk Collector to create a new batch from collected milk.
-    function createBatch(BatchCreationParams memory params) public onlyMilkCollector {
-        require(isQualityAcceptable(params.quality), "Milk quality parameters out of acceptable range");
+    function createBatch(BatchCreationParams memory params)
+        public
+        onlyMilkCollector
+    {
+        require(
+            isQualityAcceptable(params.quality),
+            "Milk quality parameters out of acceptable range"
+        );
         uint256 batchId = nextBatchId;
         _initializeBatch(batchId, params);
-        
+
         emit BatchCreated(
-            batchId, 
-            params.truckNumber, 
-            params.totalMilkQuantity, 
-            params.quality, 
+            batchId,
+            params.truckNumber,
+            params.totalMilkQuantity,
+            params.quality,
             block.timestamp
         );
-        
+
         _issueReward(msg.sender, batchId, "BatchCreated");
         nextBatchId++;
     }
 
-    function _initializeBatch(uint256 batchId, BatchCreationParams memory params) internal {
+    function _initializeBatch(
+        uint256 batchId,
+        BatchCreationParams memory params
+    ) internal {
         BatchCreationParams memory batchCreationParams = BatchCreationParams({
             truckNumber: params.truckNumber,
             totalMilkQuantity: params.totalMilkQuantity,
@@ -255,7 +397,13 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
             batchId: batchId,
             status: BatchStatus.BatchSentToProcessingPlant,
             batchCreationParams: batchCreationParams,
-            inspection: InspectionData(0, 0, MilkQuality(0, 0, 0, 0, 0), 0, false),
+            inspection: InspectionData(
+                0,
+                0,
+                MilkQuality(0, 0, 0, 0, 0),
+                0,
+                false
+            ),
             processing: ProcessingData(0, 0, 0, MilkQuality(0, 0, 0, 0, 0)),
             production: ProductionData(0, 0, 0, MilkQuality(0, 0, 0, 0, 0)),
             dispatched: ProductionDispatchedData(0, 0, 0),
@@ -275,8 +423,14 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         bool isBatchAccepted;
     }
 
-    function inspectBatch(uint256 batchId, InspectionParams memory params) public onlyMilkInspector {
-        require(isQualityAcceptable(params.quality), "Milk quality parameters out of acceptable range");
+    function inspectBatch(uint256 batchId, InspectionParams memory params)
+        public
+        onlyMilkInspector
+    {
+        require(
+            isQualityAcceptable(params.quality),
+            "Milk quality parameters out of acceptable range"
+        );
         Batch storage b = batches[batchId];
         require(b.batchId != 0, "Batch does not exist");
 
@@ -287,11 +441,11 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         b.status = BatchStatus.BatchSentToMilkProcessor;
 
         emit BatchInspected(
-            batchId, 
-            msg.sender, 
-            params.receivedMilkQuantity, 
-            params.quality, 
-            block.timestamp, 
+            batchId,
+            msg.sender,
+            params.receivedMilkQuantity,
+            params.quality,
+            block.timestamp,
             params.isBatchAccepted
         );
 
@@ -317,7 +471,10 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
     ) public onlyMilkProcessor {
         Batch storage b = batches[batchId];
         require(b.batchId != 0, "Batch does not exist");
-        require(b.status == BatchStatus.ProcessingStarted, "Processing not started");
+        require(
+            b.status == BatchStatus.ProcessingStarted,
+            "Processing not started"
+        );
         b.processing.processingEndTime = block.timestamp;
         b.processing.processedMilkQuantity = processedMilkQuantity;
         b.processing.processedQuality = MilkQuality({
@@ -330,7 +487,7 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         b.status = BatchStatus.ProcessingCompleted;
 
         emit ProcessingCompleted(batchId, msg.sender, block.timestamp);
-       _issueReward(msg.sender, batchId, "ProcessingCompleted");
+        _issueReward(msg.sender, batchId, "ProcessingCompleted");
     }
 
     // ========== Production Manager Functions ==========
@@ -355,18 +512,26 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         _issueReward(msg.sender, batchId, "ProductionStarted");
     }
 
-    function completeProduction(
-        uint256 batchId,
-        uint256 totalBottlesProduced
-    ) public onlyProductionManager {
+    function completeProduction(uint256 batchId, uint256 totalBottlesProduced)
+        public
+        onlyProductionManager
+    {
         Batch storage b = batches[batchId];
         require(b.batchId != 0, "Batch does not exist");
-        require(b.status == BatchStatus.ProductionStarted, "Production not started");
+        require(
+            b.status == BatchStatus.ProductionStarted,
+            "Production not started"
+        );
         b.production.productionEndTime = block.timestamp;
         b.production.totalBottlesProduced = totalBottlesProduced;
         b.status = BatchStatus.ProductionCompleted;
 
-        emit ProductionCompleted(batchId, msg.sender, block.timestamp, totalBottlesProduced);
+        emit ProductionCompleted(
+            batchId,
+            msg.sender,
+            block.timestamp,
+            totalBottlesProduced
+        );
         _issueReward(msg.sender, batchId, "ProductionCompleted");
     }
 
@@ -384,7 +549,13 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         b.dispatched.dispatcherTimestamp = block.timestamp;
         b.status = BatchStatus.DispatchedToDistribution;
 
-        emit ProductionDispatched(batchId, msg.sender, block.timestamp, bottlesReceived, bottlesDispatched);
+        emit ProductionDispatched(
+            batchId,
+            msg.sender,
+            block.timestamp,
+            bottlesReceived,
+            bottlesDispatched
+        );
         _issueReward(msg.sender, batchId, "ProductionDispatched");
     }
 
@@ -399,19 +570,27 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
         require(b.batchId != 0, "Batch does not exist");
         b.distribution.bottlesReceived = bottlesReceived;
         b.distribution.distributorReceivedTimestamp = block.timestamp;
-        b.distribution.distributorDispatchedTimestamp = orderDispatchedToRetailerTimestamp;
+        b
+            .distribution
+            .distributorDispatchedTimestamp = orderDispatchedToRetailerTimestamp;
         b.status = BatchStatus.DispatchedToRetailer;
 
-        emit MilkDistributed(batchId, msg.sender, bottlesReceived ,block.timestamp, orderDispatchedToRetailerTimestamp);
+        emit MilkDistributed(
+            batchId,
+            msg.sender,
+            bottlesReceived,
+            block.timestamp,
+            orderDispatchedToRetailerTimestamp
+        );
         _issueReward(msg.sender, batchId, "MilkDistributed");
     }
 
     // ========== Retailer Functions ==========
 
-    function retailerConfirm(
-        uint256 batchId,
-        uint256 totalBottlesReceived
-    ) public onlyRetailer {
+    function retailerConfirm(uint256 batchId, uint256 totalBottlesReceived)
+        public
+        onlyRetailer
+    {
         Batch storage b = batches[batchId];
         require(b.batchId != 0, "Batch does not exist");
         b.retail.retailerReceivedTimestamp = block.timestamp;
@@ -424,35 +603,12 @@ contract DairyChain is ERC20("DairyChain Token", "DAIRY") {
 
     // ========== Internal Reward Mechanism ==========
     // In this MVP, rewards are issued by minting DairyToken tokens.
-    function _issueReward(address agent, uint256 batchId, string memory action) internal {
+    function _issueReward(
+        address agent,
+        uint256 batchId,
+        string memory action
+    ) internal {
         _mint(agent, REWARD_AMOUNT * (10**decimals()));
         emit RewardIssued(agent, REWARD_AMOUNT, batchId, action);
-    }
-
-    /// @notice Get detailed information about a specific batch
-    /// @param batchId The ID of the batch to query
-    /// @return Batch The complete batch information
-    function getBatchById(uint256 batchId) public view returns (Batch memory) {
-        require(batchId < nextBatchId, "Batch ID does not exist");
-        return batches[batchId];
-    }
-
-    /// @notice Get the total rewards (token balance) for a specific address
-    /// @param account The address to query
-    /// @return uint256 The total amount of DAIRY tokens held by the address
-    function getRewardBalance(address account) public view returns (uint256) {
-        return balanceOf(account);
-    }
-
-    // Add a helper function to validate milk quality
-    function isQualityAcceptable(MilkQuality memory quality) public pure returns (bool) {
-        return (
-            quality.temperature <= MAX_TEMPERATURE &&
-            quality.pH >= MIN_PH &&
-            quality.pH <= MAX_PH &&
-            quality.fatContent >= MIN_FAT_CONTENT &&
-            quality.proteinContent >= MIN_PROTEIN_CONTENT &&
-            quality.bacterialCount <= MAX_BACTERIAL_COUNT
-        );
     }
 }
