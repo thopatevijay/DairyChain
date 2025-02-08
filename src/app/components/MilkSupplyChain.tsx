@@ -8,6 +8,7 @@ import { IoTConnection } from './supply-chain/IoTConnection';
 import { ProcessingPlant } from './supply-chain/ProcessingPlant';
 import { ProcessingStats } from './supply-chain/ProcessingPlant';
 import { Distributor } from './supply-chain/Distributor';
+import { DistributorStats } from './supply-chain/Distributor';
 import { Retailer } from './supply-chain/Retailer';
 import { Customer } from './supply-chain/Customer';
 
@@ -25,6 +26,7 @@ const MilkSupplyChain = () => {
     const [selectedNode, setSelectedNode] = useState<string | null>(null);
     const [inspectionHistory, setInspectionHistory] = useState<MilkData[]>([]);
     const [processingStats, setProcessingStats] = useState<ProcessingStats | null>(null);
+    const [distributorStats, setDistributorStats] = useState<DistributorStats | null>(null);
 
     // Create a handler for milk inspection that updates both current and history
     const handleMilkInspection = (data: MilkData) => {
@@ -140,6 +142,7 @@ const MilkSupplyChain = () => {
                 camera.setTarget(new BABYLON.Vector3(17, 0, 0));
                 camera.radius = 20;
             },
+            onStatusUpdate: (stats) => setDistributorStats(stats),
         });
 
         // Single retailer with robot
@@ -230,6 +233,7 @@ const MilkSupplyChain = () => {
         };
     }, []);
 
+    console.log(processingStats, "processingStats");
     return (
         <div className="relative w-full h-screen">
             <canvas
@@ -238,7 +242,7 @@ const MilkSupplyChain = () => {
             />
             {/* Processing Plant Stats Alert */}
             {processingStats && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-96">
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-200">
                     <Alert variant={processingStats.isDispatched ? 'success' : 'info'}>
                         <AlertTitle>Processing Plant Status</AlertTitle>
                         <AlertDescription>
@@ -297,6 +301,26 @@ const MilkSupplyChain = () => {
                                 <p>Quantity: {milkInspectionData.quantity} Ltr</p>
                                 <p>Quality: {milkInspectionData.quality} SNF</p>
                                 <p>Status: {milkInspectionData.status}</p>
+                            </div>
+                        </AlertDescription>
+                    </Alert>
+                </div>
+            )}
+            {/* Distributor Stats Alert */}
+            {distributorStats && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-200">
+                    <Alert variant={distributorStats.status === 'ACCEPTED' ? 'success' : 'info'}>
+                        <AlertTitle>Distributor Status</AlertTitle>
+                        <AlertDescription>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>Total Milk:</div>
+                                <div>{distributorStats.totalQuantity.toFixed(1)}L</div>
+
+                                <div>Average Quality:</div>
+                                <div>{distributorStats.averageQuality.toFixed(1)}</div>
+
+                                <div>Status:</div>
+                                <div>{distributorStats.status}</div>
                             </div>
                         </AlertDescription>
                     </Alert>

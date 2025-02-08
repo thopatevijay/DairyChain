@@ -6,7 +6,8 @@ export const transportMilk = (
     position: BABYLON.Vector3,
     processingPlantPosition: BABYLON.Vector3,
     scene: BABYLON.Scene,
-    metadata: any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    metadata: any,
 ) => {
     truck.setEnabled(true);
     const frameRate = 30;

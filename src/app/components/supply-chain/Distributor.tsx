@@ -8,20 +8,23 @@ interface DistributorProps {
     position: BABYLON.Vector3;
     onInspection: (data: MilkData) => void;
     onSelect: (nodeName: string) => void;
+    onStatusUpdate?: (stats: DistributorStats) => void;
 }
 
-interface CollectedMilk {
+export interface DistributorStats {
     totalQuantity: number;
     farmerCount: number;
     averageQuality: number;
+    status: string;
 }
 
-export const Distributor = ({ scene, position, onInspection, onSelect }: DistributorProps) => {
+export const Distributor = ({ scene, position, onInspection, onSelect, onStatusUpdate }: DistributorProps) => {
 
-    let collectedMilk: CollectedMilk = {
+    let distributorStats: DistributorStats = {
         totalQuantity: 0,
         farmerCount: 0,
-        averageQuality: 0
+        averageQuality: 0,
+        status: 'PENDING'
     };
 
     const blueMaterial = new BABYLON.StandardMaterial("blueMaterial", scene);
@@ -48,37 +51,49 @@ export const Distributor = ({ scene, position, onInspection, onSelect }: Distrib
     const truck = createMilkTruck(scene, position);
     truck.setEnabled(false); // Hide truck initially
 
+    const showNotice = (stats: DistributorStats) => {
+        // Just call the callbacks to update UI
+        onInspection({
+            farmerId: -1,
+            quantity: stats.totalQuantity,
+            quality: stats.averageQuality,
+            status: 'ACCEPTED',
+            timestamp: new Date().toLocaleTimeString(),
+            summary: {
+                totalQuantity: stats.totalQuantity,
+                farmerCount: stats.farmerCount,
+                averageQuality: stats.averageQuality
+            }
+        });
+
+        if (onStatusUpdate) {
+            onStatusUpdate(stats);
+        }
+    };
+
     const handleMilkDelivery = (data: MilkData) => {
         console.log('Received milk delivery:', data);
 
-        if (data.status === 'ACCEPTED') {
-            collectedMilk.totalQuantity += data.quantity;
-            collectedMilk.farmerCount++;
-            collectedMilk.averageQuality =
-                ((collectedMilk.averageQuality * (collectedMilk.farmerCount - 1)) + data.quality) /
-                collectedMilk.farmerCount;
+        distributorStats.status = 'INSPECTING_MILK_QUALITY';
 
-            console.log('Distributor collected milk:', collectedMilk);
+        distributorStats.totalQuantity += data.quantity;
+        distributorStats.farmerCount++;
+        distributorStats.averageQuality =
+            ((distributorStats.averageQuality * (distributorStats.farmerCount - 1)) + data.quality) /
+            distributorStats.farmerCount;
 
-            onInspection({
-                farmerId: 0,
-                quantity: collectedMilk.totalQuantity,
-                quality: collectedMilk.averageQuality,
-                status: 'ACCEPTED',
-                timestamp: new Date().toLocaleTimeString(),
-                summary: {
-                    totalQuantity: collectedMilk.totalQuantity,
-                    farmerCount: collectedMilk.farmerCount,
-                    averageQuality: collectedMilk.averageQuality
-                }
-            });
+        console.log('Distributor collected milk:', distributorStats);
 
-            collectedMilk = {
-                totalQuantity: 0,
-                farmerCount: 0,
-                averageQuality: 0
-            };
-        }
+        showNotice(distributorStats);
+
+        
+
+        distributorStats = {
+            totalQuantity: 0,
+            farmerCount: 0,
+            averageQuality: 0,
+            status: 'ACCEPTED'
+        };
 
     };
 
