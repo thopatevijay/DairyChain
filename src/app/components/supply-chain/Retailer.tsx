@@ -32,5 +32,18 @@ export const Retailer = ({ scene, position, onInspection, onSelect }: RetailerPr
     createLabel("Retailer", position, scene);
     createRobot(new BABYLON.Vector3(position.x + 2, position.y, position.z), scene, onInspection);
 
+
+    const handleAcceptDeliveryByDistributor = (delivery: MilkData) => {
+        onInspection(delivery);
+    };
+    // Listen for milk delivery
+    scene.onBeforeRenderObservable.add(() => {
+        if (scene.metadata?.distributorDeliveryToRetailer) {
+            const delivery = scene.metadata.distributorDeliveryToRetailer;
+            handleAcceptDeliveryByDistributor(delivery);
+            scene.metadata.distributorDeliveryToRetailer = null;
+        }
+    });
+
     return retailer;
 };

@@ -106,6 +106,7 @@ const MilkSupplyChain = () => {
 
         const processingPlantPosition = new BABYLON.Vector3(0, 0, 0);
         const distributorPosition = new BABYLON.Vector3(15, 0, 0);
+        const retailerPosition = new BABYLON.Vector3(32, 0, 0);
 
         const collectionPoint = CollectionPoint({
             scene,
@@ -143,6 +144,7 @@ const MilkSupplyChain = () => {
                 camera.radius = 20;
             },
             onStatusUpdate: (stats) => setDistributorStats(stats),
+            retailerPosition
         });
 
         // Single retailer with robot

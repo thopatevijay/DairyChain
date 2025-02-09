@@ -280,21 +280,6 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
         // Inspection robot animation
         await animateRobot(inspectionRobot, "inspectionAnimation", 3000);
 
-        // Quality check
-        // const isAccepted = quality >= 25;
-        // if (!isAccepted) {
-        //     statsRef.current.rejectedTrucks++;
-        //     statsRef.current.status = 'REJECTED';
-        //     onInspection({
-        //         farmerId: -1,
-        //         quantity,
-        //         quality,
-        //         status: 'REJECTED',
-        //         timestamp: new Date().toLocaleTimeString()
-        //     });
-        //     return false;
-        // }
-
         statsRef.current.acceptedTrucks++;
         statsRef.current.totalMilkQty += quantity;
         statsRef.current.avgQuality =
@@ -325,7 +310,7 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
         // }, 2000);
     };
 
-    const manageProduction = async (quantity: number) => {
+    const manageProduction = async () => {
         // setTimeout(() => {
         statsRef.current.status = 'PRODUCTION_STARTED';
         statsRef.current.productionStartTime = new Date().toLocaleTimeString();
@@ -336,30 +321,9 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
         await animateRobot(productionRobot, "productionAnimation", 3000);
 
         // Bottling process
-        const bottleCount = Math.floor(quantity);
+        const bottleCount = Math.floor(3);
         for (let i = 0; i < bottleCount; i++) {
             const bottle = createBottle();
-            const bottleAnimation = new BABYLON.Animation(
-                "bottleMove",
-                "position",
-                30,
-                BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
-                BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
-            );
-
-            const bottleKeys = [];
-            bottleKeys.push({ frame: 0, value: bottle.position.clone() });
-            bottleKeys.push({
-                frame: 30,
-                value: new BABYLON.Vector3(
-                    bottle.position.x + 2,
-                    bottle.position.y,
-                    bottle.position.z
-                )
-            });
-
-            bottleAnimation.setKeys(bottleKeys);
-            bottle.animations = [bottleAnimation];
 
             await new Promise(resolve => {
                 scene.beginAnimation(bottle, 0, 30, false, 1, () => {
@@ -372,22 +336,17 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
             statsRef.current.bottlesPacked++;
         }
 
-        // setTimeout(() => {
         statsRef.current.productionEndTime = new Date().toLocaleTimeString();
         statsRef.current.status = 'PRODUCTION_COMPLETED';
-        // }, 2000);
     };
 
     const dispatchProducts = async () => {
-        // setTimeout(() => {
         statsRef.current.status = 'DISPATCHING';
         showNotice({ ...statsRef.current, status: 'DISPATCHING' });
-        // }, 2000);
 
         // Dispatch animation
         await animateRobot(dispatchRobot, "dispatchAnimation", 3000);
 
-        // setTimeout(() => {
         statsRef.current.isDispatched = true;
         statsRef.current.status = 'DISPATCHED_TO_DISTRIBUTION';
 
@@ -395,7 +354,7 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
             ...statsRef.current,
             status: 'DISPATCHED_TO_DISTRIBUTION'
         });
-        // }, 2000);
+
 
         const distributorDelivery = {
             distributorDelivery: {
@@ -419,11 +378,8 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
 
         const isAccepted = await inspectMilk(quantity, quality);
         if (!isAccepted) return;
-
-        // check if INSPECTION_COMPLETED then start processing
-        console.log(statsRef.current.status);
         if (statsRef.current.status === 'INSPECTION_COMPLETED') await processMilkBatch();
-        if (statsRef.current.status === 'PROCESSING_COMPLETED') await manageProduction(quantity);
+        if (statsRef.current.status === 'PROCESSING_COMPLETED') await manageProduction();
         if (statsRef.current.status === 'PRODUCTION_COMPLETED') await dispatchProducts();
     };
 
