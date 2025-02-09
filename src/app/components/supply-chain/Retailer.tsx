@@ -36,13 +36,13 @@ export const Retailer = ({ scene, position, onInspection, onSelect, addLogEntry 
 
     const handleAcceptDeliveryByDistributor = (delivery: MilkData) => {
         addLogEntry(`AGENT ACTIVATED: Retailer`);
-        addLogEntry(`STATUS: RECEIVED_MILK_FROM_DISTRIBUTOR`);
+        addLogEntry(`STATUS: RETAILER RECEIVED MILK FROM DISTRIBUTOR`);
         onInspection(delivery);
         addLogEntry(`Retailer Status: ` +
             `Total Bottles received: ${delivery.quantity}L\n` +
             `Received at: ${new Date().toLocaleTimeString()}`
         );
-        addLogEntry(`STATUS: ACCEPTED_MILK_FROM_DISTRIBUTOR`);
+        addLogEntry(`STATUS: RETAILER ACCEPTED MILK FROM DISTRIBUTOR`);
     };
     // Listen for milk delivery
     scene.onBeforeRenderObservable.add(() => {

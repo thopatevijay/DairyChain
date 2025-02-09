@@ -27,6 +27,7 @@ const MilkSupplyChain = () => {
     const [processingStats, setProcessingStats] = useState<ProcessingStats | null>(null);
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [supplyChainLogs, setSupplyChainLogs] = useState<any[]>([]);
+    const logsEndRef = useRef<HTMLDivElement>(null);
 
     // Add new log entry helper function
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -48,6 +49,14 @@ const MilkSupplyChain = () => {
             setInspectionHistory([]);
         }, 5000);
     };
+
+    const scrollToBottom = () => {
+        logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [supplyChainLogs]);
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -295,24 +304,39 @@ const MilkSupplyChain = () => {
             {/* Supply Chain Logs */}
             {supplyChainLogs.length > 0 && (
                 <div className="absolute top-3 left-1/2 -translate-x-1/2 w-[600px]">
-                    <Alert>
-                        <AlertTitle>Supply Chain Logs</AlertTitle>
+                    <Alert className="border-2 border-gray-300 bg-gray-900">
+                        <AlertTitle>
+                            Supply Chain Logs
+                        </AlertTitle>
                         <AlertDescription>
-                            <div className="max-h-[200px] overflow-y-auto space-y-2">
+                            <div 
+                                className="max-h-[200px] overflow-y-auto space-y-2 font-mono text-sm"
+                                style={{
+                                    backgroundColor: '#0a0a0a',
+                                    backgroundImage: 'linear-gradient(rgba(32, 219, 72, 0.06) 1px, transparent 1px)',
+                                    backgroundSize: '100% 2px'
+                                }}
+                            >
                                 {supplyChainLogs.map((log, index) => (
-                                    <div key={index} className="border-b border-gray-200 py-2">
-                                        <div className="text-sm text-gray-500">
-                                            {log.timestamp}
+                                    <div 
+                                        key={index} 
+                                        className="border-b border-green-900/30 py-2 px-3 hover:bg-green-900/10 transition-colors"
+                                    >
+                                        <div className="text-green-500 opacity-75">
+                                            ➜ {log.timestamp}
                                         </div>
                                         {typeof log.message === 'string' ? (
-                                            <div className="whitespace-pre-wrap">{log.message}</div>
+                                            <div className="whitespace-pre-wrap text-green-400 mt-1">
+                                                {log.message}
+                                            </div>
                                         ) : (
-                                            <pre className="text-sm overflow-x-auto">
+                                            <pre className="text-green-400 overflow-x-auto mt-1 bg-black/30 p-2 rounded">
                                                 {JSON.stringify(log.message, null, 2)}
                                             </pre>
                                         )}
                                     </div>
                                 ))}
+                                <div ref={logsEndRef} /> {/* Scroll anchor */}
                             </div>
                         </AlertDescription>
                     </Alert>
