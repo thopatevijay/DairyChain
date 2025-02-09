@@ -9,8 +9,8 @@ interface DistributorProps {
     position: BABYLON.Vector3;
     onInspection: (data: MilkData) => void;
     onSelect: (nodeName: string) => void;
-    onStatusUpdate?: (stats: DistributorStats) => void;
     retailerPosition: BABYLON.Vector3;
+    addLogEntry: (log: string) => void;
 }
 
 export interface DistributorStats {
@@ -19,7 +19,7 @@ export interface DistributorStats {
     status: string;
 }
 
-export const Distributor = ({ scene, position, onInspection, onSelect, onStatusUpdate, retailerPosition }: DistributorProps) => {
+export const Distributor = ({ scene, position, onInspection, onSelect, addLogEntry, retailerPosition }: DistributorProps) => {
 
     let distributorStats: DistributorStats = {
         totalQuantity: 0,
@@ -64,28 +64,34 @@ export const Distributor = ({ scene, position, onInspection, onSelect, onStatusU
                 averageQuality: stats.averageQuality
             }
         });
-
-        if (onStatusUpdate) {
-            onStatusUpdate(stats);
-        }
     };
 
     const handleMilkDelivery = (data: MilkData) => {
         console.log('Received milk delivery:', data);
-
+        addLogEntry(`AGENT ACTIVATED: Distributor`);
+        addLogEntry(`STATUS: RECEIVED_MILK_FROM_PROCESSING_PLANT`);
+        addLogEntry(`Distributor Status: ` +
+            `Total Bottles received: ${data.quantity}L\n` +
+            `Received at: ${new Date().toLocaleTimeString()}`
+        );
         distributorStats.status = 'INSPECTING_MILK_QUALITY';
 
         distributorStats.totalQuantity += data.quantity;
         distributorStats.averageQuality = data.quality;
-            
+
 
 
         console.log('Distributor collected milk:', distributorStats);
 
         showNotice(distributorStats);
 
-        
+
         distributorStats.status = 'DISPATCHED_TO_RETAILER'
+        addLogEntry(`STATUS: DISPATCHED_TO_RETAILER`);
+        addLogEntry(`Distributor Status: ` +
+            `Total Bottles Dispatched: ${distributorStats.totalQuantity}L\n` +
+            `Dispatched at: ${new Date().toLocaleTimeString()}`
+        );
 
         const distributorDeliveryToRetailer = {
             distributorDeliveryToRetailer: {
@@ -96,7 +102,7 @@ export const Distributor = ({ scene, position, onInspection, onSelect, onStatusU
 
         // await new Promise(resolve => {
         // });
-        
+
         setTimeout(() => {
             transportMilk(
                 truck,

@@ -8,7 +8,6 @@ import { IoTConnection } from './supply-chain/IoTConnection';
 import { ProcessingPlant } from './supply-chain/ProcessingPlant';
 import { ProcessingStats } from './supply-chain/ProcessingPlant';
 import { Distributor } from './supply-chain/Distributor';
-import { DistributorStats } from './supply-chain/Distributor';
 import { Retailer } from './supply-chain/Retailer';
 import { Customer } from './supply-chain/Customer';
 
@@ -26,7 +25,17 @@ const MilkSupplyChain = () => {
     const [selectedNode, setSelectedNode] = useState<string | null>(null);
     const [inspectionHistory, setInspectionHistory] = useState<MilkData[]>([]);
     const [processingStats, setProcessingStats] = useState<ProcessingStats | null>(null);
-    const [distributorStats, setDistributorStats] = useState<DistributorStats | null>(null);
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [supplyChainLogs, setSupplyChainLogs] = useState<any[]>([]);
+
+    // Add new log entry helper function
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const addLogEntry = (message: any) => {
+        setSupplyChainLogs(prev => [...prev, {
+            timestamp: new Date().toLocaleTimeString(),
+            message,
+        }]);
+    };
 
     // Create a handler for milk inspection that updates both current and history
     const handleMilkInspection = (data: MilkData) => {
@@ -117,6 +126,7 @@ const MilkSupplyChain = () => {
                 camera.setTarget(new BABYLON.Vector3(-15, 0, 0));
                 camera.radius = 20;
             },
+            addLogEntry,
             processingPlantPosition
         });
 
@@ -129,7 +139,10 @@ const MilkSupplyChain = () => {
                 camera.setTarget(processingPlantPosition);
                 camera.radius = 20;
             },
-            onStatusUpdate: (stats) => setProcessingStats(stats),
+            onStatusUpdate: (stats) => {
+                setProcessingStats(stats);
+            },
+            addLogEntry,
             distributorPosition
         });
 
@@ -143,7 +156,7 @@ const MilkSupplyChain = () => {
                 camera.setTarget(new BABYLON.Vector3(17, 0, 0));
                 camera.radius = 20;
             },
-            onStatusUpdate: (stats) => setDistributorStats(stats),
+            addLogEntry,
             retailerPosition
         });
 
@@ -156,7 +169,8 @@ const MilkSupplyChain = () => {
                 setSelectedNode(nodeName);
                 camera.setTarget(new BABYLON.Vector3(32, 0, 0));
                 camera.radius = 20;
-            }
+            },
+            addLogEntry
         });
 
         // Single customer with robot
@@ -242,54 +256,7 @@ const MilkSupplyChain = () => {
                 ref={canvasRef}
                 style={{ width: '100%', height: '100%' }}
             />
-            {/* Processing Plant Stats Alert */}
-            {processingStats && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-200">
-                    <Alert variant={processingStats.isDispatched ? 'success' : 'info'}>
-                        <AlertTitle>Processing Plant Status</AlertTitle>
-                        <AlertDescription>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>Trucks Received:</div>
-                                <div>{processingStats.trucksReceived}</div>
 
-                                <div>Accepted/Rejected:</div>
-                                <div>{processingStats.acceptedTrucks}/{processingStats.rejectedTrucks}</div>
-
-                                <div>Total Milk:</div>
-                                <div>{processingStats.totalMilkQty.toFixed(1)}L</div>
-
-                                <div>Average Quality:</div>
-                                <div>{processingStats.avgQuality.toFixed(1)}</div>
-
-                                <div>Processing Start Time:</div>
-                                <div>{processingStats.processingStartTime}</div>
-
-                                <div>Processing End Time:</div>
-                                <div>{processingStats.processingEndTime}</div>
-
-                                <div>Production Start Time:</div>
-                                <div>{processingStats.productionStartTime}</div>
-
-                                <div>Production End Time:</div>
-                                <div>{processingStats.productionEndTime}</div>
-
-                                <div>Bottles Packed:</div>
-                                <div>{processingStats.bottlesPacked}</div>
-
-                                <div>Status:</div>
-                                <div>{processingStats.status}</div>
-
-                                {/* {processingStats.processingStartTime && (
-                                    <>
-                                        <div>Processing Time:</div>
-                                        <div>{processingStats.processingStartTime} - {processingStats.processingEndTime}</div>
-                                    </>
-                                )} */}
-                            </div>
-                        </AlertDescription>
-                    </Alert>
-                </div>
-            )}
             {/* Current Inspection Alert */}
             {milkInspectionData && (
                 <div className="absolute top-4 right-4 w-80">
@@ -303,26 +270,6 @@ const MilkSupplyChain = () => {
                                 <p>Quantity: {milkInspectionData.quantity} Ltr</p>
                                 <p>Quality: {milkInspectionData.quality} SNF</p>
                                 <p>Status: {milkInspectionData.status}</p>
-                            </div>
-                        </AlertDescription>
-                    </Alert>
-                </div>
-            )}
-            {/* Distributor Stats Alert */}
-            {distributorStats && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-200">
-                    <Alert variant={distributorStats.status === 'ACCEPTED' ? 'success' : 'info'}>
-                        <AlertTitle>Distributor Status</AlertTitle>
-                        <AlertDescription>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>Total Milk:</div>
-                                <div>{distributorStats.totalQuantity.toFixed(1)}L</div>
-
-                                <div>Average Quality:</div>
-                                <div>{distributorStats.averageQuality.toFixed(1)}</div>
-
-                                <div>Status:</div>
-                                <div>{distributorStats.status}</div>
                             </div>
                         </AlertDescription>
                     </Alert>
@@ -345,6 +292,32 @@ const MilkSupplyChain = () => {
                     </Alert>
                 ))}
             </div>
+            {/* Supply Chain Logs */}
+            {supplyChainLogs.length > 0 && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-[600px]">
+                    <Alert>
+                        <AlertTitle>Supply Chain Logs</AlertTitle>
+                        <AlertDescription>
+                            <div className="max-h-[200px] overflow-y-auto space-y-2">
+                                {supplyChainLogs.map((log, index) => (
+                                    <div key={index} className="border-b border-gray-200 py-2">
+                                        <div className="text-sm text-gray-500">
+                                            {log.timestamp}
+                                        </div>
+                                        {typeof log.message === 'string' ? (
+                                            <div className="whitespace-pre-wrap">{log.message}</div>
+                                        ) : (
+                                            <pre className="text-sm overflow-x-auto">
+                                                {JSON.stringify(log.message, null, 2)}
+                                            </pre>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </AlertDescription>
+                    </Alert>
+                </div>
+            )}
         </div>
     );
 };

@@ -7,9 +7,10 @@ interface RetailerProps {
     position: BABYLON.Vector3;
     onInspection: (data: MilkData) => void;
     onSelect: (nodeName: string) => void;
+    addLogEntry: (log: string) => void;
 }
 
-export const Retailer = ({ scene, position, onInspection, onSelect }: RetailerProps) => {
+export const Retailer = ({ scene, position, onInspection, onSelect, addLogEntry }: RetailerProps) => {
     const blueMaterial = new BABYLON.StandardMaterial("blueMaterial", scene);
     blueMaterial.diffuseColor = new BABYLON.Color3(0.4, 0.6, 0.9);
 
@@ -34,7 +35,14 @@ export const Retailer = ({ scene, position, onInspection, onSelect }: RetailerPr
 
 
     const handleAcceptDeliveryByDistributor = (delivery: MilkData) => {
+        addLogEntry(`AGENT ACTIVATED: Retailer`);
+        addLogEntry(`STATUS: RECEIVED_MILK_FROM_DISTRIBUTOR`);
         onInspection(delivery);
+        addLogEntry(`Retailer Status: ` +
+            `Total Bottles received: ${delivery.quantity}L\n` +
+            `Received at: ${new Date().toLocaleTimeString()}`
+        );
+        addLogEntry(`STATUS: ACCEPTED_MILK_FROM_DISTRIBUTOR`);
     };
     // Listen for milk delivery
     scene.onBeforeRenderObservable.add(() => {

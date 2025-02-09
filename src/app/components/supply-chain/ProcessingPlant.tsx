@@ -27,9 +27,10 @@ interface ProcessingPlantProps {
     onSelect: (nodeName: string) => void;
     onStatusUpdate?: (stats: ProcessingStats) => void;
     distributorPosition: BABYLON.Vector3;
+    addLogEntry: (log: string) => void;
 }
 
-export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onStatusUpdate, distributorPosition }: ProcessingPlantProps) => {
+export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onStatusUpdate, distributorPosition, addLogEntry }: ProcessingPlantProps) => {
     // Stats tracking
     const statsRef = {
         current: {
@@ -277,6 +278,13 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
             status: 'INSPECTING'
         });
 
+        addLogEntry(`AGENT ACTIVATED: Milk Inspector`);
+
+        addLogEntry(`MILK INSPECTOR UPDATES:` +
+            `Trucks: ${statsRef.current.trucksReceived}\n` +
+            `Milk Quantity: ${quantity}L\n` +
+            `Milk Quality: ${quality}`);
+
         // Inspection robot animation
         await animateRobot(inspectionRobot, "inspectionAnimation", 3000);
 
@@ -286,42 +294,54 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
             ((statsRef.current.avgQuality * (statsRef.current.acceptedTrucks - 1)) + quality) /
             statsRef.current.acceptedTrucks;
 
-        // update status
-        // setTimeout(() => {
         statsRef.current.status = 'INSPECTION_COMPLETED';
-        // }, 2000);
+        addLogEntry(`MILK INSPECTOR UPDATES:` +
+            `Milk Quantity: ${statsRef.current.totalMilkQty}L\n` +
+            `Milk Quality: ${statsRef.current.avgQuality}`);
         return true;
     };
 
     const processMilkBatch = async () => {
-        // update pressing start time
-        // setTimeout(() => {
+        addLogEntry(`AGENT ACTIVATED: Milk Processor`);
+        addLogEntry(`STATUS: PROCESSING_STARTED`);
+        addLogEntry(`MILK PROCESSOR UPDATES: ` +
+            `Milk Quantity: ${statsRef.current.totalMilkQty}L\n` +
+            `Milk Quality: ${statsRef.current.avgQuality}`);
+
         statsRef.current.status = 'PROCESSING_STARTED';
         statsRef.current.processingStartTime = new Date().toLocaleTimeString();
         showNotice({ ...statsRef.current, status: 'PROCESSING_STARTED' });
-        // }, 2000);
 
         // Processing robot animation
         await animateRobot(processingRobot, "processingAnimation", 3000);
 
-        // setTimeout(()    => {
+        addLogEntry(`STATUS: PROCESSING_COMPLETED`);
+        addLogEntry(`MILK PROCESSOR UPDATES: ` +
+            `Milk Quantity: ${statsRef.current.totalMilkQty}L\n` +
+            `Milk Quality: ${statsRef.current.avgQuality}`);
+
         statsRef.current.processingEndTime = new Date().toLocaleTimeString();
         statsRef.current.status = 'PROCESSING_COMPLETED';
-        // }, 2000);
     };
 
     const manageProduction = async () => {
-        // setTimeout(() => {
+        addLogEntry(`AGENT ACTIVATED: Production Manager`);
+        addLogEntry(`STATUS: PRODUCTION_STARTED`);
+        addLogEntry(`PRODUCTION MANAGER UPDATES: ` +
+            `Total Milk Quantity: ${statsRef.current.totalMilkQty}L\n` +
+            `Average Quality: ${statsRef.current.avgQuality}\n` +
+            `Production Start Time: ${new Date().toLocaleTimeString()}`);
+
         statsRef.current.status = 'PRODUCTION_STARTED';
         statsRef.current.productionStartTime = new Date().toLocaleTimeString();
         showNotice({ ...statsRef.current, status: 'PRODUCTION_STARTED' });
-        // }, 2000);
 
         // Production robot animation
         await animateRobot(productionRobot, "productionAnimation", 3000);
 
+        addLogEntry(`STATUS: BOTTLE_PACKING_STARTED`);
         // Bottling process
-        const bottleCount = Math.floor(3);
+        const bottleCount = Math.floor(statsRef.current.totalMilkQty);
         for (let i = 0; i < bottleCount; i++) {
             const bottle = createBottle();
 
@@ -330,17 +350,25 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
                     setTimeout(() => {
                         bottle.dispose();
                         resolve(true);
-                    }, 500);
+                    }, 100);
                 });
             });
             statsRef.current.bottlesPacked++;
         }
 
+        addLogEntry(`STATUS: BOTTLE_PACKING_COMPLETED`);
         statsRef.current.productionEndTime = new Date().toLocaleTimeString();
         statsRef.current.status = 'PRODUCTION_COMPLETED';
+        addLogEntry(`STATUS: PRODUCTION_COMPLETED`);
+        addLogEntry(`PRODUCTION MANAGER UPDATES: ` +
+            `Total Milk Quantity: ${statsRef.current.totalMilkQty}L\n` +
+            `Production End Time: ${statsRef.current.productionEndTime}\n` +
+            `Bottles Packed: ${statsRef.current.bottlesPacked}`);
     };
 
     const dispatchProducts = async () => {
+        addLogEntry(`AGENT ACTIVATED: Production Dispatcher`);
+        addLogEntry(`STATUS: DISPATCHING_TO_DISTRIBUTION`);
         statsRef.current.status = 'DISPATCHING';
         showNotice({ ...statsRef.current, status: 'DISPATCHING' });
 
@@ -349,6 +377,10 @@ export const ProcessingPlant = ({ scene, position, onInspection, onSelect, onSta
 
         statsRef.current.isDispatched = true;
         statsRef.current.status = 'DISPATCHED_TO_DISTRIBUTION';
+        addLogEntry(`STATUS: DISPATCHED_TO_DISTRIBUTION`);
+        addLogEntry(`PRODUCTION DISPATCHER UPDATES: ` +
+            `Total Bottles Dispatched: ${statsRef.current.bottlesPacked}\n` +
+            `Dispatch Time: ${new Date().toLocaleTimeString()}`);
 
         showNotice({
             ...statsRef.current,

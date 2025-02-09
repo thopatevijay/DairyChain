@@ -10,6 +10,7 @@ interface CollectionPointProps {
     onInspection: (data: MilkData) => void;
     onSelect: (nodeName: string) => void;
     processingPlantPosition: BABYLON.Vector3;
+    addLogEntry: (log: string) => void;
 }
 
 interface CollectedMilk {
@@ -18,7 +19,7 @@ interface CollectedMilk {
     averageQuality: number;
 }
 
-export const CollectionPoint = ({ scene, position, onInspection, onSelect, processingPlantPosition }: CollectionPointProps) => {
+export const CollectionPoint = ({ scene, position, onInspection, onSelect, processingPlantPosition, addLogEntry }: CollectionPointProps) => {
     let collectedMilk: CollectedMilk = {
         totalQuantity: 0,
         farmerCount: 0,
@@ -53,6 +54,8 @@ export const CollectionPoint = ({ scene, position, onInspection, onSelect, proce
     // Function to handle milk collection
     const handleMilkCollection = (data: MilkData) => {
         console.log('Received milk delivery:', data); // Debug log
+        addLogEntry(`AGENT ACTIVATED: Milk Collector`);
+        addLogEntry(`STATUS: COLLECTING MILK FROM FARMERS`);
 
         if (data.status === 'ACCEPTED') {
             collectedMilk.totalQuantity += data.quantity;
@@ -81,12 +84,20 @@ export const CollectionPoint = ({ scene, position, onInspection, onSelect, proce
                     }
                 });
 
+                addLogEntry(`STATUS: MILK BATCH CREATED` +
+                    `Average Quality: ${collectedMilk.averageQuality}SNF` +
+                    `Total quantity: ${collectedMilk.totalQuantity}L` +
+                    `Created at: ${new Date().toLocaleTimeString()}`
+                );
+
                 const processingDelivery = {
                     processingDelivery: {
                         quantity: collectedMilk.totalQuantity,
                         quality: collectedMilk.averageQuality
                     }
                 };
+
+                addLogEntry(`STATUS: MILK BATCH SENT TO PROCESSING PLANT`);
 
                 transportMilk(
                     truck,
