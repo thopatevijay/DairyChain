@@ -2,29 +2,29 @@ import * as BABYLON from '@babylonjs/core';
 import { createLabel, createRobot } from '@/app/utils/babylon-helpers';
 import { MilkData } from '@/app/types/supply-chain';
 import { createMilkTruck } from '@/app/utils/createMilkTruck';
+import { transportMilk } from '@/app/utils/transportMilk';
 
 interface DistributorProps {
     scene: BABYLON.Scene;
     position: BABYLON.Vector3;
     onInspection: (data: MilkData) => void;
     onSelect: (nodeName: string) => void;
-    onStatusUpdate?: (stats: DistributorStats) => void;
+    retailerPosition: BABYLON.Vector3;
+    addLogEntry: (log: string) => void;
 }
 
 export interface DistributorStats {
     totalQuantity: number;
-    farmerCount: number;
     averageQuality: number;
     status: string;
 }
 
-export const Distributor = ({ scene, position, onInspection, onSelect, onStatusUpdate }: DistributorProps) => {
+export const Distributor = ({ scene, position, onInspection, onSelect, addLogEntry, retailerPosition }: DistributorProps) => {
 
     let distributorStats: DistributorStats = {
         totalQuantity: 0,
-        farmerCount: 0,
         averageQuality: 0,
-        status: 'PENDING'
+        status: 'PENDING',
     };
 
     const blueMaterial = new BABYLON.StandardMaterial("blueMaterial", scene);
@@ -61,36 +61,61 @@ export const Distributor = ({ scene, position, onInspection, onSelect, onStatusU
             timestamp: new Date().toLocaleTimeString(),
             summary: {
                 totalQuantity: stats.totalQuantity,
-                farmerCount: stats.farmerCount,
                 averageQuality: stats.averageQuality
             }
         });
-
-        if (onStatusUpdate) {
-            onStatusUpdate(stats);
-        }
     };
 
     const handleMilkDelivery = (data: MilkData) => {
         console.log('Received milk delivery:', data);
-
+        addLogEntry(`AGENT ACTIVATED: Distributor`);
+        addLogEntry(`STATUS: RECEIVED_MILK_FROM_PROCESSING_PLANT`);
+        addLogEntry(`Distributor Status: ` +
+            `Total Bottles received: ${data.quantity}L\n` +
+            `Received at: ${new Date().toLocaleTimeString()}`
+        );
         distributorStats.status = 'INSPECTING_MILK_QUALITY';
 
         distributorStats.totalQuantity += data.quantity;
-        distributorStats.farmerCount++;
-        distributorStats.averageQuality =
-            ((distributorStats.averageQuality * (distributorStats.farmerCount - 1)) + data.quality) /
-            distributorStats.farmerCount;
+        distributorStats.averageQuality = data.quality;
+
+
 
         console.log('Distributor collected milk:', distributorStats);
 
         showNotice(distributorStats);
 
-        
+
+        distributorStats.status = 'DISPATCHED_TO_RETAILER'
+        addLogEntry(`STATUS: DISPATCHED_TO_RETAILER`);
+        addLogEntry(`Distributor Status: ` +
+            `Total Bottles Dispatched: ${distributorStats.totalQuantity}L\n` +
+            `Dispatched at: ${new Date().toLocaleTimeString()}`
+        );
+
+        const distributorDeliveryToRetailer = {
+            distributorDeliveryToRetailer: {
+                quantity: distributorStats.totalQuantity,
+                quality: distributorStats.averageQuality
+            }
+        };
+
+        // await new Promise(resolve => {
+        // });
+
+        setTimeout(() => {
+            transportMilk(
+                truck,
+                position,
+                retailerPosition,
+                scene,
+                distributorDeliveryToRetailer
+            );
+        }, 2000);
+
 
         distributorStats = {
             totalQuantity: 0,
-            farmerCount: 0,
             averageQuality: 0,
             status: 'ACCEPTED'
         };

@@ -7,9 +7,10 @@ interface RetailerProps {
     position: BABYLON.Vector3;
     onInspection: (data: MilkData) => void;
     onSelect: (nodeName: string) => void;
+    addLogEntry: (log: string) => void;
 }
 
-export const Retailer = ({ scene, position, onInspection, onSelect }: RetailerProps) => {
+export const Retailer = ({ scene, position, onInspection, onSelect, addLogEntry }: RetailerProps) => {
     const blueMaterial = new BABYLON.StandardMaterial("blueMaterial", scene);
     blueMaterial.diffuseColor = new BABYLON.Color3(0.4, 0.6, 0.9);
 
@@ -31,6 +32,26 @@ export const Retailer = ({ scene, position, onInspection, onSelect }: RetailerPr
 
     createLabel("Retailer", position, scene);
     createRobot(new BABYLON.Vector3(position.x + 2, position.y, position.z), scene, onInspection);
+
+
+    const handleAcceptDeliveryByDistributor = (delivery: MilkData) => {
+        addLogEntry(`AGENT ACTIVATED: Retailer`);
+        addLogEntry(`STATUS: RETAILER RECEIVED MILK FROM DISTRIBUTOR`);
+        onInspection(delivery);
+        addLogEntry(`Retailer Status: ` +
+            `Total Bottles received: ${delivery.quantity}L\n` +
+            `Received at: ${new Date().toLocaleTimeString()}`
+        );
+        addLogEntry(`STATUS: RETAILER ACCEPTED MILK FROM DISTRIBUTOR`);
+    };
+    // Listen for milk delivery
+    scene.onBeforeRenderObservable.add(() => {
+        if (scene.metadata?.distributorDeliveryToRetailer) {
+            const delivery = scene.metadata.distributorDeliveryToRetailer;
+            handleAcceptDeliveryByDistributor(delivery);
+            scene.metadata.distributorDeliveryToRetailer = null;
+        }
+    });
 
     return retailer;
 };
